@@ -112,6 +112,23 @@
                     <includePluginDependencies>false</includePluginDependencies>
                 </configuration>
             </plugin>
+            <!-- Executable jar: `java -jar target/dirxml-simulator-<ver>.jar <cmd>`.
+                 The proprietary NetIQ jars can't be bundled (license); the manifest
+                 Class-Path references them in ../lib relative to target/. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.pointblue.dirxml.sim.Cli</mainClass>
+                        </manifest>
+                        <manifestEntries>
+                            <Class-Path>../lib/dirxml.jar ../lib/dirxml_misc.jar ../lib/nxsl.jar ../lib/xp.jar ../lib/CommonDriverShim.jar ../lib/jclient.jar ../lib/dhutil.jar ../lib/XDS.jar ../lib/js.jar</Class-Path>
+                        </manifestEntries>
+                    </archive>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>

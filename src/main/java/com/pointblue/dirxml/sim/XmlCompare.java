@@ -1,10 +1,19 @@
 package com.pointblue.dirxml.sim;
 
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * Canonical XDS comparison for golden assertions. v1 normalizes whitespace
- * between elements (the Novell serializer is otherwise stable) and compares the
- * resulting text, reporting the first divergence. Attribute-order-insensitive
- * comparison is a planned enhancement.
+ * Canonical XDS comparison for golden assertions. Normalizes the document into a
+ * stable text form — elements with attributes sorted by name, inter-element
+ * whitespace dropped — so a golden match doesn't depend on attribute order or
+ * formatting. Reports the first divergence.
  */
 public final class XmlCompare {
 
@@ -19,11 +28,42 @@ public final class XmlCompare {
         }
     }
 
-    /** Normalize: re-serialize, drop inter-tag whitespace, trim. */
+    /** Normalize to a stable form: attributes sorted by name, no inter-element whitespace. */
     public static String canonical(String xml) {
-        String reserialized = Xds.serialize(Xds.parse(xml));
-        // collapse whitespace runs that sit entirely between tags
-        return reserialized.replaceAll(">\\s+<", "><").trim();
+        StringBuilder sb = new StringBuilder();
+        Document doc = Xds.parse(xml);
+        if (doc.getDocumentElement() != null) {
+            writeCanonical(doc.getDocumentElement(), sb);
+        }
+        return sb.toString();
+    }
+
+    private static void writeCanonical(Element el, StringBuilder sb) {
+        sb.append('<').append(el.getNodeName());
+        NamedNodeMap attrs = el.getAttributes();
+        List<String> pairs = new ArrayList<>();
+        for (int i = 0; i < attrs.getLength(); i++) {
+            Node a = attrs.item(i);
+            pairs.add(a.getNodeName() + "=\"" + a.getNodeValue() + "\"");
+        }
+        pairs.sort(String::compareTo);
+        for (String p : pairs) {
+            sb.append(' ').append(p);
+        }
+        sb.append('>');
+        NodeList kids = el.getChildNodes();
+        for (int i = 0; i < kids.getLength(); i++) {
+            Node k = kids.item(i);
+            if (k.getNodeType() == Node.ELEMENT_NODE) {
+                writeCanonical((Element) k, sb);
+            } else if (k.getNodeType() == Node.TEXT_NODE || k.getNodeType() == Node.CDATA_SECTION_NODE) {
+                String t = k.getNodeValue();
+                if (t != null && !t.trim().isEmpty()) {
+                    sb.append(t.trim());
+                }
+            }
+        }
+        sb.append("</").append(el.getNodeName()).append('>');
     }
 
     public static Diff compare(String expected, String actual) {
