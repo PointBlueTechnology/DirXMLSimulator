@@ -77,6 +77,14 @@
             <scope>system</scope>
             <systemPath>${project.basedir}/lib/XDS.jar</systemPath>
         </dependency>
+        <dependency>
+            <!-- Repackaged Rhino (com.novell.soa.script.mozilla) for ECMAScript es: functions -->
+            <groupId>com.netiq.idm</groupId>
+            <artifactId>js</artifactId>
+            <version>1.0.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/js.jar</systemPath>
+        </dependency>
 
         <dependency>
             <groupId>junit</groupId>

@@ -96,6 +96,7 @@ cases/<name>/
   input.xds              # the operation to run (the event)
   directory.xds          # optional: initial fake-directory state (<instance> set)
   gcv.xml                # optional: GCV definitions (overrides export GCVs)
+  ecmascript/            # optional: *.js defining es: functions the policies call
   expected-output.xds    # golden (written by `record`)
   expected-directory.xds # optional golden: directory end-state
 ```

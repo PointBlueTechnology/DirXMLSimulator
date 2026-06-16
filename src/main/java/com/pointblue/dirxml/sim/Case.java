@@ -82,6 +82,22 @@ public final class Case {
             EngineContext ctx = EngineContext.create(driverDN, dnFormat, fromNDS, gcv);
             ctx.setTraceLevel(traceLevel);
 
+            // ECMAScript (es:) functions: from the export's resources and/or a
+            // case-local ecmascript/*.js directory.
+            List<String> ecma = new ArrayList<>();
+            if (export != null) {
+                ecma.addAll(export.ecmaScriptSources());
+            }
+            Path ecmaDir = caseDir.resolve("ecmascript");
+            if (Files.isDirectory(ecmaDir)) {
+                try (var paths = Files.list(ecmaDir)) {
+                    for (Path js : paths.filter(f -> f.toString().endsWith(".js")).sorted().toList()) {
+                        ecma.add(new String(Files.readAllBytes(js), "UTF-8"));
+                    }
+                }
+            }
+            ctx.enableEcmaScript(ecma);
+
             FakeDirectory directory = new FakeDirectory();
             Path dirFile = caseDir.resolve("directory.xds");
             if (Files.exists(dirFile)) {

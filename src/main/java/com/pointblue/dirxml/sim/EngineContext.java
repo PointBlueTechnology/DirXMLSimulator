@@ -110,6 +110,35 @@ public final class EngineContext {
         return newDynamicContext(dir, dir);
     }
 
+    /**
+     * Enable ECMAScript ({@code es:}) extension functions from the given JavaScript
+     * sources (e.g. a driver's ECMAScript resources). Sets the Rhino engine flag
+     * (without it the engine takes the JSR-223 path and fails with "Script
+     * processor not available"), evaluates the scripts into a scope, and registers
+     * that scope for XPath/policy evaluation. No-op if {@code jsSources} is empty.
+     */
+    public void enableEcmaScript(java.util.List<String> jsSources) {
+        if (jsSources == null || jsSources.isEmpty()) {
+            return;
+        }
+        try {
+            java.util.List<String> uris = new java.util.ArrayList<>();
+            for (String src : jsSources) {
+                java.io.File f = java.io.File.createTempFile("dxsim-ecma", ".js");
+                f.deleteOnExit();
+                java.nio.file.Files.write(f.toPath(), src.getBytes("UTF-8"));
+                uris.add(f.toURI().toString());
+            }
+            Object scope = com.novell.xsl.extensions.ECMAScriptFunction
+                .evaluateCommandLineScripts(uris, EngineContext.class.getClassLoader());
+            staticCtx.setUseRhinoEs();
+            staticCtx.setXPathProperty(
+                com.novell.xsl.extensions.ECMAScriptFunction.ECMASCRIPT_SCOPE_PROPERTY, scope);
+        } catch (Throwable t) {
+            System.err.println("warning: could not enable ECMAScript: " + t);
+        }
+    }
+
     /** Reset captured trace (call before each run). */
     public void resetTrace() {
         tracer.resetBuffer();

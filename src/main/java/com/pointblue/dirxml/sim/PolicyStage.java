@@ -101,12 +101,18 @@ public final class PolicyStage {
             RuleProcessor proc;
             String root = policy.getLocalName();
             String type = root;
+            // XSLT policies are <xsl:stylesheet>/<xsl:transform> in the XSLT namespace.
+            if (PolicyLoader.XSLT_NS.equals(policy.getNamespaceURI())) {
+                proc = new XSLTRuleProcessor(policy, ctx.staticContext());
+                return new PolicyStage(name, proc, policy, "xslt");
+            }
             switch (root) {
                 case "policy":
                     proc = new DirXMLScriptProcessor(policy, ctx.staticContext());
                     break;
                 case "style-sheet":
                     proc = new XSLTRuleProcessor(policy, ctx.staticContext());
+                    type = "xslt";
                     break;
                 case "attr-name-map":
                 case "schema-mapping":

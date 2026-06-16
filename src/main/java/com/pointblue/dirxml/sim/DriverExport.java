@@ -128,6 +128,24 @@ public final class DriverExport {
         return merged;
     }
 
+    /**
+     * The driver's ECMAScript resource sources — the JavaScript that defines the
+     * {@code es:} extension functions policies call. Stored in the export as
+     * {@code <resource><content contains="text">function …</content></resource>}.
+     */
+    public List<String> ecmaScriptSources() {
+        List<String> out = new ArrayList<>();
+        for (Element res : allDescendants(root, "resource")) {
+            for (Element content : Xds.childrenByName(res, "content")) {
+                String js = Xds.text(content);
+                if (js.contains("function ")) {
+                    out.add(js);
+                }
+            }
+        }
+        return out;
+    }
+
     private static List<Element> allDescendants(Node ctx, String localName) {
         List<Element> out = new ArrayList<>();
         NodeList kids = ctx.getChildNodes();

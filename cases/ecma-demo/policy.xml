@@ -1,0 +1,5 @@
+<policy xmlns:es="http://www.novell.com/nxsl/ecmascript">
+  <rule><description>uppercase surname via es:</description><conditions/><actions>
+    <do-set-dest-attr-value name="UpperSurname"><arg-value type="string"><token-xpath expression="es:upper('doe')"/></arg-value></do-set-dest-attr-value>
+  </actions></rule>
+</policy>

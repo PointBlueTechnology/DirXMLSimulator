@@ -87,6 +87,21 @@ public class DriverExportTest {
     }
 
     @Test
+    public void ecmaScriptSourcesExtracted() {
+        String exp =
+            "<driver-configuration name='G' dn='cn=G,cn=ds,o=s'>" +
+            "  <policy-linkage/>" +
+            "  <resource name='Util'><content contains='text'>" +
+            "    function greet(n){ return 'hi ' + n; }" +
+            "  </content></resource>" +
+            "</driver-configuration>";
+        DriverExport ex = DriverExport.load(Xds.parse(exp));
+        java.util.List<String> js = ex.ecmaScriptSources();
+        assertEquals(1, js.size());
+        assertTrue(js.get(0).contains("function greet"));
+    }
+
+    @Test
     public void exportChainRunsEndToEnd() {
         DriverExport ex = DriverExport.load(Xds.parse(EXPORT));
         EngineContext ctx = EngineContext.create("\\sys\\ds\\Test");

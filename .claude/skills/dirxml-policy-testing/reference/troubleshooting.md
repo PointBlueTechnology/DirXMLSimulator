@@ -28,12 +28,14 @@
   `case.properties` (set that to a realistic slash DN if a policy queries the
   driver object); other `dirxml.auto.*` engine GCVs aren't populated — add them to
   `gcv.xml` if a policy needs them.
-- **`Script processor not available for 'PYTHON'` / `es:` function fails.** The
-  policy calls an ECMAScript extension function (e.g. `es:guid2string`) defined in
-  the driver's ECMAScript resources. The harness doesn't load a script engine, so
-  these rules error (shown as a `[ERROR]` stage, not a crash — the rest of the
-  step still runs). Test the non-ECMAScript rules, or stub the value with a
-  `gcv.xml` / a simplified policy.
+- **`es:` function fails / `Script processor not available`.** The policy calls an
+  ECMAScript extension function (e.g. `es:getSurname`). Provide the JavaScript that
+  defines it: set `export=` (the harness loads the export's ECMAScript resources
+  automatically) and/or drop the `.js` source in the case's `ecmascript/`
+  directory. Needs `lib/js.jar` (repackaged Rhino) — `doctor` covers the jars. If a
+  function is still undefined, its source isn't among the loaded scripts. (Some
+  NetIQ built-in `es:` helpers live in product ECMAScript libraries, not the
+  driver — supply those `.js` files in `ecmascript/` if a policy uses them.)
 - **A stage shows `[ERROR]`.** The policy threw (bad XPath, unavailable script
   function, unresolvable target). The run stops at that stage but shows all prior
   snapshots and the error message; the offending action is named in the message.

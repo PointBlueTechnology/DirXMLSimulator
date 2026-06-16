@@ -27,6 +27,9 @@ public final class PolicyLoader {
 
     private PolicyLoader() {}
 
+    /** The XSLT namespace — an XSLT policy's root is {@code <xsl:stylesheet>}/{@code <xsl:transform>}. */
+    static final String XSLT_NS = "http://www.w3.org/1999/XSL/Transform";
+
     /** Recognized policy root local names, in extraction-preference order. */
     private static final String[] POLICY_ROOTS = {"policy", "style-sheet"};
 
@@ -43,6 +46,10 @@ public final class PolicyLoader {
         Element root = doc.getDocumentElement();
         if (root == null) {
             throw new IllegalArgumentException("Empty policy document");
+        }
+        // An XSLT policy: <xsl:stylesheet>/<xsl:transform> in the XSLT namespace.
+        if (XSLT_NS.equals(root.getNamespaceURI())) {
+            return root;
         }
         for (String name : POLICY_ROOTS) {
             if (name.equals(root.getLocalName())) {

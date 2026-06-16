@@ -89,6 +89,39 @@ public class ChannelSimulatorTest {
     }
 
     @Test
+    public void xsltPolicyTransforms() {
+        EngineContext ctx = EngineContext.create("\\T\\sys\\DS\\D");
+        String xslt =
+            "<xsl:stylesheet xmlns:xsl='http://www.w3.org/1999/XSL/Transform' version='1.0'>" +
+            "<xsl:template match='@*|node()'><xsl:copy><xsl:apply-templates select='@*|node()'/></xsl:copy></xsl:template>" +
+            "<xsl:template match=\"add-attr[@attr-name='Surname']/value/text()\">CHANGED-BY-XSLT</xsl:template>" +
+            "</xsl:stylesheet>";
+        ChannelSimulator.Result r = new ChannelSimulator(ctx, new FakeDirectory())
+            .add(PolicyStage.fromElement("output", PolicyLoader.load(xslt), ctx))
+            .run("<nds dtdversion='4.0'><input><add class-name='User' src-dn='\\x\\y'>" +
+                 "<add-attr attr-name='Surname'><value>Doe</value></add-attr></add></input></nds>");
+        assertTrue("XSLT should transform the value: " + r.finalXds,
+            r.finalXds.contains("CHANGED-BY-XSLT"));
+    }
+
+    @Test
+    public void ecmaScriptFunctionResolves() {
+        EngineContext ctx = EngineContext.create("\\T\\sys\\DS\\D");
+        ctx.enableEcmaScript(java.util.List.of("function up(s){ return ('' + s).toUpperCase(); }"));
+        String policy =
+            "<policy xmlns:es='http://www.novell.com/nxsl/ecmascript'>" +
+            "<rule><description>es upper</description><conditions/><actions>" +
+            "<do-set-dest-attr-value name='U'>" +
+            "<arg-value type='string'><token-xpath expression=\"es:up('doe')\"/></arg-value>" +
+            "</do-set-dest-attr-value></actions></rule></policy>";
+        ChannelSimulator.Result r = new ChannelSimulator(ctx, new FakeDirectory())
+            .add(PolicyStage.fromElement("t", PolicyLoader.load(policy), ctx))
+            .run(ADD_INPUT);
+        assertNull("es: function should not error", r.stages.get(0).error);
+        assertTrue("es:up('doe') -> DOE in output: " + r.finalXds, r.finalXds.contains("DOE"));
+    }
+
+    @Test
     public void autoDriverDnResolves() {
         // dirxml.auto.driverdn is auto-seeded from the driver DN (the engine does
         // this at runtime; exports don't carry it).
