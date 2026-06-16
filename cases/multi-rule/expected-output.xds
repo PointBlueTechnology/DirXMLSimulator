@@ -1,0 +1,15 @@
+<nds dtdversion="4.0">
+<input>
+<add class-name="User" src-dn="\x\y\z">
+<add-attr attr-name="Surname">
+<value>Doe</value>
+</add-attr>
+<add-attr attr-name="A">
+<value type="string">1</value>
+</add-attr>
+<add-attr attr-name="B">
+<value type="string">2</value>
+</add-attr>
+</add>
+</input>
+</nds>

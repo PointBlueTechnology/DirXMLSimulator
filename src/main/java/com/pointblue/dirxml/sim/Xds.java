@@ -46,6 +46,24 @@ public final class Xds {
         return new XmlDocument(el.getOwnerDocument()).getDocumentString();
     }
 
+    /**
+     * Serialize just this element's subtree (not its whole owner document) to a
+     * standalone XML string. Used to lift one policy out of a driver export.
+     */
+    public static String serializeElement(Element el) {
+        try {
+            javax.xml.transform.Transformer t =
+                javax.xml.transform.TransformerFactory.newInstance().newTransformer();
+            t.setOutputProperty(javax.xml.transform.OutputKeys.OMIT_XML_DECLARATION, "yes");
+            java.io.StringWriter sw = new java.io.StringWriter();
+            t.transform(new javax.xml.transform.dom.DOMSource(el),
+                new javax.xml.transform.stream.StreamResult(sw));
+            return sw.toString();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize element <" + el.getLocalName() + ">: " + e, e);
+        }
+    }
+
     /** Deep-clone a document (for per-stage snapshots that must not alias). */
     public static Document copy(Document doc) {
         return parse(serialize(doc));

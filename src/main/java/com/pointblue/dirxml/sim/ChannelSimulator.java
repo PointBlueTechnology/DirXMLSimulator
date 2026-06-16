@@ -72,6 +72,15 @@ public final class ChannelSimulator {
 
     /** Run the input operation through all stages, capturing per-stage snapshots. */
     public Result run(Document input) {
+        return run(input, false);
+    }
+
+    /**
+     * Run the input through all stages. When {@code perRule} is true, each DirXML
+     * Script policy is expanded into one snapshot per {@code <rule>} (see
+     * {@link PolicyStage#explodeByRule}); other stage types run whole.
+     */
+    public Result run(Document input, boolean perRule) {
         ctx.resetTrace();
         dir.drainQueries();   // clear any prior interactions
         dir.drainCommands();
@@ -80,7 +89,12 @@ public final class ChannelSimulator {
         Document doc = input;
         List<StageSnapshot> snapshots = new ArrayList<>();
 
-        for (PolicyStage stage : stages) {
+        List<PolicyStage> effective = new ArrayList<>();
+        for (PolicyStage s : stages) {
+            effective.addAll(perRule ? s.explodeByRule(ctx) : List.of(s));
+        }
+
+        for (PolicyStage stage : effective) {
             String inXds = Xds.serialize(doc);
             int traceMark = ctx.trace().length();
             try {
@@ -100,5 +114,9 @@ public final class ChannelSimulator {
 
     public Result run(String inputXds) {
         return run(Xds.parse(inputXds));
+    }
+
+    public Result run(String inputXds, boolean perRule) {
+        return run(Xds.parse(inputXds), perRule);
     }
 }

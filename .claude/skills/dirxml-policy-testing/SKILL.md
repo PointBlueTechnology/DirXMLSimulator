@@ -62,7 +62,13 @@ document marker means, and how to read the rule trace to debug.
    `bin/sim step <caseDir>` to see every stage's input→output, the queries it
    issued, and its rule trace.
 3. **Diagnose** from the step output: find the stage where a value first appears,
-   gets vetoed, or comes out wrong. Read that stage's `TRACE`.
+   gets vetoed, or comes out wrong. Read that stage's `TRACE`. To narrow within a
+   policy, `bin/sim step <caseDir> --rules` expands each DirXML Script policy into
+   one snapshot **per rule**, so you see exactly which rule changed the document or
+   vetoed it. (Caveat: a `scope="policy"` local variable set in one rule isn't
+   visible to a later rule when stepped per-rule — driver-scoped locals persist;
+   the rule trace is always accurate. Use whole-policy `step` if a policy relies on
+   policy-scoped locals across rules.)
 4. **Edit the policy** (the `.xml` file the case points at — a real Designer
    `*_contents.xml`, an exported policy, or one you write).
 5. **Re-run**, or `bin/sim test <caseDir>` to check against a recorded golden.
@@ -71,7 +77,7 @@ document marker means, and how to read the rule trace to debug.
 
 ```
 bin/sim run    <caseDir> [--trace]   # run chain; final output (+ full trace)
-bin/sim step   <caseDir>             # per-stage input/output/queries/commands/trace
+bin/sim step   <caseDir> [--rules]   # per-stage (or with --rules, per-rule) i/o/queries/trace
 bin/sim test   <caseDir>             # diff vs expected-*.xds; exit 0 pass, 1 mismatch
 bin/sim record <caseDir>             # write expected-output.xds / expected-directory.xds
 bin/sim extract <trace> <outDir>     # mine a DSTrace log into a case (input + directory + samples)

@@ -1,0 +1,11 @@
+<policy>
+  <rule><description>stamp A</description><conditions/><actions>
+    <do-set-dest-attr-value name="A"><arg-value type="string"><token-text>1</token-text></arg-value></do-set-dest-attr-value>
+  </actions></rule>
+  <rule><description>stamp B</description><conditions/><actions>
+    <do-set-dest-attr-value name="B"><arg-value type="string"><token-text>2</token-text></arg-value></do-set-dest-attr-value>
+  </actions></rule>
+  <rule><description>veto if no Surname</description>
+    <conditions><and><if-op-attr name="Surname" op="not-available"/></and></conditions>
+    <actions><do-veto/></actions></rule>
+</policy>

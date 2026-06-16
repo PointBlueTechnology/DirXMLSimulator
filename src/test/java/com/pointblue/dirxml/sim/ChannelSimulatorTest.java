@@ -51,6 +51,43 @@ public class ChannelSimulatorTest {
         assertTrue(r.stage("command-transform").trace.contains("stamp Title"));
     }
 
+    private static final String THREE_RULES =
+        "<policy>" +
+        "  <rule><description>stamp A</description><conditions/><actions>" +
+        "    <do-set-dest-attr-value name='A'><arg-value type='string'><token-text>1</token-text></arg-value></do-set-dest-attr-value>" +
+        "  </actions></rule>" +
+        "  <rule><description>stamp B</description><conditions/><actions>" +
+        "    <do-set-dest-attr-value name='B'><arg-value type='string'><token-text>2</token-text></arg-value></do-set-dest-attr-value>" +
+        "  </actions></rule>" +
+        "  <rule><description>veto if no Surname</description>" +
+        "    <conditions><and><if-op-attr name='Surname' op='not-available'/></and></conditions>" +
+        "    <actions><do-veto/></actions></rule>" +
+        "</policy>";
+
+    @Test
+    public void perRuleSteppingExpandsAndCarriesForward() {
+        EngineContext ctx = EngineContext.create("\\ACME\\sys\\DS\\Drv");
+        ChannelSimulator sim = new ChannelSimulator(ctx, new FakeDirectory())
+            .add(PolicyStage.fromElement("transform", PolicyLoader.load(THREE_RULES), ctx));
+
+        // Whole-policy: one stage.
+        assertEquals(1, sim.run(ADD_INPUT).stages.size());
+
+        // Per-rule: one stage per rule, document carried forward.
+        ChannelSimulator.Result r = sim.run(Xds.parse(ADD_INPUT), true);
+        assertEquals(3, r.stages.size());
+        assertTrue(r.stages.get(0).stageName.contains("#1 stamp A"));
+        // Rule 1 added A but not B.
+        assertTrue(r.stages.get(0).outputXds.contains("\"A\""));
+        assertFalse(r.stages.get(0).outputXds.contains("\"B\""));
+        // Rule 2's input is rule 1's output; it adds B.
+        assertEquals(r.stages.get(0).outputXds, r.stages.get(1).inputXds);
+        assertTrue(r.stages.get(1).outputXds.contains("\"B\""));
+        // Surname present (in ADD_INPUT? no) -> veto fires at rule 3.
+        // ADD_INPUT has only Given Name, so the veto rule strips the op.
+        assertTrue(r.finalXds.contains("<input/>"));
+    }
+
     @Test
     public void policyQueriesFakeDirectory() {
         // Directory holds jdoe with a Surname the policy will copy via a query.

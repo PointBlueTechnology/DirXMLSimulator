@@ -47,7 +47,7 @@ public final class Cli {
                     System.exit(doRun(caseDir, wantTrace));
                     break;
                 case "step":
-                    System.exit(doStep(caseDir));
+                    System.exit(doStep(caseDir, hasFlag(args, "--rules")));
                     break;
                 case "test":
                     System.exit(doTest(caseDir));
@@ -83,9 +83,9 @@ public final class Cli {
         return 0;
     }
 
-    private static int doStep(Path caseDir) {
+    private static int doStep(Path caseDir, boolean perRule) {
         Case c = Case.load(caseDir);
-        ChannelSimulator.Result r = c.run();
+        ChannelSimulator.Result r = c.sim.run(c.input, perRule);
         for (StageSnapshot s : r.stages) {
             System.out.println("============================================================");
             System.out.println("STAGE: " + s.stageName + (s.changed() ? "  [changed]" : "  [no-op]"));
@@ -242,6 +242,12 @@ public final class Cli {
     }
 
     private static void usage() {
-        System.err.println("usage: <run|step|test|record> <caseDir> [--trace]");
+        System.err.println("usage:");
+        System.err.println("  run    <caseDir> [--trace]   run chain, print final output (+ trace)");
+        System.err.println("  step   <caseDir> [--rules]   per-stage (or per-rule) input/output/queries/trace");
+        System.err.println("  test   <caseDir>             diff vs expected-*.xds; exit !=0 on mismatch");
+        System.err.println("  record <caseDir>             write goldens");
+        System.err.println("  extract <traceFile> <outDir> mine a DSTrace log into a case");
+        System.err.println("  doctor                       setup self-check");
     }
 }
