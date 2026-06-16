@@ -70,6 +70,15 @@ public final class ChannelSimulator {
         return this;
     }
 
+    /** Distinct Java extension classes referenced by any stage that aren't on the classpath. */
+    public List<String> missingJavaClasses() {
+        java.util.LinkedHashSet<String> all = new java.util.LinkedHashSet<>();
+        for (PolicyStage s : stages) {
+            all.addAll(s.missingJavaClasses());
+        }
+        return new ArrayList<>(all);
+    }
+
     /** Run the input operation through all stages, capturing per-stage snapshots. */
     public Result run(Document input) {
         return run(input, false);

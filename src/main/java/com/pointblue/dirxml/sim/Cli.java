@@ -65,8 +65,22 @@ public final class Cli {
         }
     }
 
+    /** Warn clearly about Java extension classes a policy needs but that aren't on the classpath. */
+    private static void warnMissingJavaClasses(Case c) {
+        java.util.List<String> missing = c.sim.missingJavaClasses();
+        if (!missing.isEmpty()) {
+            System.out.println("WARNING: Java extension classes not on the classpath (calls to them "
+                + "will fail with 'function not found'); add the jar(s) to lib/:");
+            for (String cn : missing) {
+                System.out.println("  - " + cn);
+            }
+            System.out.println();
+        }
+    }
+
     private static int doRun(Path caseDir, boolean wantTrace) {
         Case c = Case.load(caseDir);
+        warnMissingJavaClasses(c);
         ChannelSimulator.Result r = c.run();
         System.out.println("# stages: " + r.stages.size());
         for (StageSnapshot s : r.stages) {
@@ -85,6 +99,7 @@ public final class Cli {
 
     private static int doStep(Path caseDir, boolean perRule) {
         Case c = Case.load(caseDir);
+        warnMissingJavaClasses(c);
         ChannelSimulator.Result r = c.sim.run(c.input, perRule);
         for (StageSnapshot s : r.stages) {
             System.out.println("============================================================");
@@ -117,6 +132,7 @@ public final class Cli {
 
     private static int doTest(Path caseDir) {
         Case c = Case.load(caseDir);
+        warnMissingJavaClasses(c);
         ChannelSimulator.Result r = c.run();
         boolean ok = true;
 

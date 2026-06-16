@@ -36,9 +36,17 @@
   function is still undefined, its source isn't among the loaded scripts. (Some
   NetIQ built-in `es:` helpers live in product ECMAScript libraries, not the
   driver — supply those `.js` files in `ecmascript/` if a policy uses them.)
+- **`function 'foo:bar' not found` — Java extension class missing.** A policy can
+  bind a namespace to a Java class and call its static methods:
+  `xmlns:m="http://www.novell.com/nxsl/java/java.lang.Math"` then `m:max(3,7)`.
+  These work whenever the class is on the classpath. If it isn't, the engine
+  reports a vague "function not found" — but `run`/`step`/`test` print an explicit
+  `WARNING: Java extension classes not on the classpath: …` up front listing the
+  missing class(es). Add the jar that contains it to `lib/`.
 - **A stage shows `[ERROR]`.** The policy threw (bad XPath, unavailable script
-  function, unresolvable target). The run stops at that stage but shows all prior
-  snapshots and the error message; the offending action is named in the message.
+  function, missing Java extension class, unresolvable target). The run stops at
+  that stage but shows all prior snapshots and the error message; the offending
+  action is named in the message.
 - **A queried value is missing/wrong.** In `step`, read the stage's QUERIES: did
   the policy ask for that attribute, with what `<search-attr>`/scope? Then check
   `directory.xds` actually contains a matching `<instance>` with that attr.

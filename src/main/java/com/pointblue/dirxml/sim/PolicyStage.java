@@ -49,6 +49,11 @@ public final class PolicyStage {
         return "policy".equals(type);
     }
 
+    /** Java extension classes (nxsl/java/ namespaces) this policy references but that aren't on the classpath. */
+    public List<String> missingJavaClasses() {
+        return source == null ? Collections.emptyList() : JavaExtensions.missingClasses(source);
+    }
+
     /**
      * Expand a DirXML Script policy into one single-rule stage per {@code <rule>},
      * for per-rule stepping. Each sub-stage is a real one-rule policy run in order
