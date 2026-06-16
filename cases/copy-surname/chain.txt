@@ -1,0 +1,2 @@
+# stageName = policy file (relative to this case dir), in channel order
+create = policy.xml

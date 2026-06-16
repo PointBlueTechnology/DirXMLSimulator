@@ -1,0 +1,18 @@
+<nds dtdversion="4.0">
+<input>
+<modify class-name="User" dest-dn="\ACME\users\jdoe" src-dn="\ACME\users\jdoe">
+<association>jdoe-assoc</association>
+<modify-attr attr-name="Title">
+<add-value>
+<value>Engineer</value>
+</add-value>
+</modify-attr>
+<modify-attr attr-name="CopiedSurname">
+<remove-all-values/>
+<add-value>
+<value type="string">Doe</value>
+</add-value>
+</modify-attr>
+</modify>
+</input>
+</nds>

@@ -99,6 +99,18 @@ public final class FakeDirectory implements XdsQueryProcessor, XdsCommandProcess
         return entries.size();
     }
 
+    /** Serialize the current directory state as an XDS {@code <instance>} set. */
+    public String dumpState() {
+        StringBuilder sb = new StringBuilder("<nds dtdversion=\"4.0\"><input>");
+        ReadAttrs all = new ReadAttrs();
+        all.all = true;
+        for (Entry e : entries.values()) {
+            sb.append(renderInstance(e, all));
+        }
+        sb.append("</input></nds>");
+        return Xds.serialize(Xds.parse(sb.toString()));
+    }
+
     public Entry get(String dn) {
         return entries.get(dn);
     }

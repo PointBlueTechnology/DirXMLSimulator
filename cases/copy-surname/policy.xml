@@ -1,0 +1,11 @@
+<policy>
+  <rule>
+    <description>copy Surname from directory via query</description>
+    <conditions/>
+    <actions>
+      <do-set-dest-attr-value name="CopiedSurname">
+        <arg-value type="string"><token-dest-attr name="Surname"/></arg-value>
+      </do-set-dest-attr-value>
+    </actions>
+  </rule>
+</policy>

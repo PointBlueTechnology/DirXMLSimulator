@@ -1,0 +1,13 @@
+<nds dtdversion="4.0">
+<input>
+<instance class-name="User" src-dn="\ACME\users\jdoe">
+<association>jdoe-assoc</association>
+<attr attr-name="Surname">
+<value>Doe</value>
+</attr>
+<attr attr-name="Given Name">
+<value>John</value>
+</attr>
+</instance>
+</input>
+</nds>

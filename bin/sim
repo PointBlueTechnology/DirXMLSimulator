@@ -1,0 +1,5 @@
+#!/bin/sh
+# DirXML Policy Simulator CLI launcher (JDK 21 required for the 4.10.1 engine).
+HERE=$(cd "$(dirname "$0")/.." && pwd)
+JAVA_HOME="${SIM_JAVA_HOME:-/Users/jcombs/Library/Java/JavaVirtualMachines/azul-21.0.8/Contents/Home}"
+exec "$JAVA_HOME/bin/java" -cp "$HERE/target/classes:$HERE/lib/*" com.pointblue.dirxml.sim.Cli "$@"
