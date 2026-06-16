@@ -1,0 +1,7 @@
+target/
+*.bak
+*.class
+.idea/
+*.iml
+# Proprietary NetIQ / OpenText IDM binaries — deployers supply these locally.
+lib/*.jar

@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.pointblue.dirxml</groupId>
+    <artifactId>dirxml-simulator</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>DirXML Policy Simulator</name>
+    <description>Headless, agent-driven test harness for IDM (DirXML) channel policies.
+        Drives the engine's own policy interpreter stage-by-stage against
+        author-supplied inputs and an in-memory fake directory.</description>
+
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <!-- NetIQ / OpenText IDM engine + support jars (proprietary; system scope, kept in lib/) -->
+        <dependency>
+            <groupId>com.netiq.idm</groupId>
+            <artifactId>dirxml</artifactId>
+            <version>4.10.1.0000</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/dirxml.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.netiq.idm</groupId>
+            <artifactId>dirxml_misc</artifactId>
+            <version>4.10.1.0000</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/dirxml_misc.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.netiq.idm</groupId>
+            <artifactId>nxsl</artifactId>
+            <version>1.0.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/nxsl.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.netiq.idm</groupId>
+            <artifactId>xp</artifactId>
+            <version>1.0.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/xp.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.netiq.idm</groupId>
+            <artifactId>CommonDriverShim</artifactId>
+            <version>1.0.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/CommonDriverShim.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.netiq.idm</groupId>
+            <artifactId>jclient</artifactId>
+            <version>1.0.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/jclient.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.netiq.idm</groupId>
+            <artifactId>dhutil</artifactId>
+            <version>1.0.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/dhutil.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.netiq.idm</groupId>
+            <artifactId>XDS</artifactId>
+            <version>1.0.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/XDS.jar</systemPath>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>dirxml-simulator-${project.version}</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.2</version>
+            </plugin>
+            <!-- Convenience runner for the spike / CLI during development -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <includeProjectDependencies>true</includeProjectDependencies>
+                    <includePluginDependencies>false</includePluginDependencies>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
