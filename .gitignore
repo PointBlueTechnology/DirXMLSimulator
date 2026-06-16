@@ -5,3 +5,7 @@ target/
 *.iml
 # Proprietary NetIQ / OpenText IDM binaries — deployers supply these locally.
 lib/*.jar
+
+# Proprietary client driver exports — never commit
+*.xml
+!cases/**/*.xml

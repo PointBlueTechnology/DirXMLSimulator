@@ -79,8 +79,19 @@ public final class Case {
             }
 
             ChannelSimulator sim = new ChannelSimulator(ctx, directory);
-            for (Stage s : readChain(caseDir)) {
-                sim.add(PolicyStage.fromFile(s.name, caseDir.resolve(s.policyPath), ctx));
+            String exportRef = p.getProperty("export");
+            if (exportRef != null && !exportRef.isBlank()) {
+                // Derive the chain from a Designer driver export.
+                DriverExport export = DriverExport.load(caseDir.resolve(exportRef.trim()));
+                String channel = p.getProperty("channel", "subscriber").trim().toLowerCase();
+                List<PolicyStage> stages = "publisher".equals(channel)
+                    ? export.publisherChain(ctx)
+                    : export.subscriberChain(ctx);
+                sim.addAll(stages);
+            } else {
+                for (Stage s : readChain(caseDir)) {
+                    sim.add(PolicyStage.fromFile(s.name, caseDir.resolve(s.policyPath), ctx));
+                }
             }
 
             Document input = Xds.parseFile(caseDir.resolve("input.xds"));

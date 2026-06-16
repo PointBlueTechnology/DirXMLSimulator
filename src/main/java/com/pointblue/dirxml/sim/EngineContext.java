@@ -38,6 +38,9 @@ public final class EngineContext {
         return create(driverDN, "slash", true, new GCDefinitions());
     }
 
+    /** The engine's standard regex escape-char class (RuleStaticContext.regExEscChars). */
+    private static final String REGEX_ESC_CHARS = "([\\\\\\$\\^\\.\\?\\*\\+\\[\\]\\(\\)\\|])";
+
     public static EngineContext create(String driverDN, String dnFormat, boolean fromNDS, GCDefinitions gcv) {
         CaptureEngineTrace tracer = new CaptureEngineTrace();
         char[] delims = XdsDN.getDelims(dnFormat).toCharArray();
@@ -49,7 +52,9 @@ public final class EngineContext {
             EngineContext.class.getClassLoader(),
             tracer,
             gcv,
-            null);            // Driver -- null works for policies that don't use fanout/driver-filter
+            null,             // Driver -- null works for policies that don't use fanout/driver-filter
+            new java.util.TreeMap<>(),   // driver variables (scope="driver")
+            REGEX_ESC_CHARS);
         return new EngineContext(ctx, tracer);
     }
 
