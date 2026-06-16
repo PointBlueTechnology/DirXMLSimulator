@@ -150,9 +150,13 @@ public final class TraceExtract {
         Map<String, Integer> counts = new LinkedHashMap<>();
         Doc inputEvent = null;
         List<Doc> results = new ArrayList<>();
+        int eventKinds = 0;
         int n = 0;
         for (Doc d : docs) {
             counts.merge(d.kind(), 1, Integer::sum);
+            if (d.kind().equals("event")) {
+                eventKinds++;
+            }
             // Cap sample files so a multi-transaction firehose doesn't write 10k+ files.
             if (n < MAX_SAMPLES) {
                 String fname = String.format("%04d-%s-%s.xds", n + 1, d.channel, d.kind());
@@ -191,8 +195,11 @@ public final class TraceExtract {
                 sum.append("wrote case.properties stub (channel=")
                    .append(publisher ? "publisher" : "subscriber").append(")\n");
             }
+        } else if (eventKinds > 0) {
+            sum.append("no operation event auto-picked; see trace-samples/*-event.xds\n");
         } else {
-            sum.append("no input event found; pick one from trace-samples/*-event.xds\n");
+            sum.append("no sync events in this trace — looks like a startup/init or "
+                + "query-only trace (init/schema/response docs only)\n");
         }
 
         // directory.xds <- merged instances from all query-result documents
