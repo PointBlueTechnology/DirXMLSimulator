@@ -1,0 +1,53 @@
+# Troubleshooting
+
+## Setup
+
+- **`bin/sim doctor` says JDK 21 missing.** The 4.10.1 engine jars are Java 21
+  bytecode. Install a JDK 21 or `export SIM_JAVA_HOME=/path/to/jdk21`. The
+  launcher otherwise tries `java_home -v 21` and common locations.
+- **engine jars INCOMPLETE.** Stage all 8 proprietary NetIQ jars in `lib/`
+  (gitignored): `dirxml`, `dirxml_misc`, `nxsl`, `xp`, `CommonDriverShim`,
+  `jclient`, `dhutil`, `XDS`. Copy from an IDM install or an "IDM Driver
+  Dependencies" set. `lib/README.md` lists them.
+- **`JCContext` native error.** Harmless — `JCContext` is only ever a null
+  parameter type; never initialize it. `doctor` checks classes without
+  initializing for this reason. If your own code triggers it, you referenced
+  JCContext in a way that loads it.
+
+## Results
+
+- **Output is `<input/>` (empty).** The operation was vetoed or stripped. Run
+  `step` and find the stage where the operation disappears; its trace shows the
+  `do-veto` / `do-strip` / failed condition. This is often *correct* behavior for
+  a minimal input (e.g. a Create policy vetoing for missing required attributes,
+  or a Scoping/Event policy filtering it out). Add the required attrs/GCVs.
+- **A `token-global-variable` resolves to empty.** The GCV isn't in scope. If
+  using an export, confirm the name exists in it; otherwise supply a `gcv.xml`.
+  Hand-written GCV `<definition>`s need a `display-name` or the engine silently
+  rejects the block. Engine auto-GCVs like `dirxml.auto.driverdn` are **not** in
+  exports — set `driverDN` in `case.properties` and/or add the value to `gcv.xml`.
+- **A queried value is missing/wrong.** In `step`, read the stage's QUERIES: did
+  the policy ask for that attribute, with what `<search-attr>`/scope? Then check
+  `directory.xds` actually contains a matching `<instance>` with that attr.
+  Matching is case-insensitive value equality; `read-attr` projects which attrs
+  come back (none specified ⇒ all).
+- **Queries hit the wrong side.** Check `fromNDS`. `true` = Subscriber (dest =
+  app), `false` = Publisher (dest = eDir). `token-dest-attr` / `token-src-attr`
+  follow this.
+- **`regExEscChars` / null NPE in VarString or do-reformat.** The harness already
+  supplies the engine's regex escape class via the 10-arg context; if you build a
+  context yourself, use `EngineContext.create(...)` rather than constructing
+  `RuleStaticContext` directly.
+
+## Authoring / DOM
+
+- **DirXML DOM is Level 2.** When writing harness code, never use
+  `Node.getTextContent()` (returns null on the Novell DOM) — use `Xds.text(node)`.
+  Parse/serialize via `Xds` (it routes through `XmlDocument` so DOM edits
+  re-serialize and the DOM is the `com.novell.xml.dom` impl the engine needs).
+- **Golden compares.** `XmlCompare` canonicalizes whitespace but is
+  attribute-order sensitive; if a `test` fails only on attribute order,
+  re-`record` the golden. Re-record whenever you intend the output to change.
+- **A stage shows `[no-op]`.** The policy ran but didn't change the document
+  (conditions didn't match, or actions were inert). The trace still shows the
+  rule evaluation — check which conditions were false.

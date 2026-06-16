@@ -1,0 +1,107 @@
+---
+name: dirxml-policy-testing
+description: >-
+  Test and debug NetIQ / OpenText Identity Manager (DirXML) channel policies with
+  the DirXML Policy Simulator in this repo. Use when asked to test, debug, trace,
+  or iterate on IDM/DirXML policies, rules, style-sheets, schema mapping, matching,
+  placement, or creation logic — including running a driver export's policies
+  against sample events, finding why an attribute/value is wrong or missing, or
+  verifying a policy change. Drives the real engine headlessly (no eDirectory),
+  steps a channel stage by stage, and answers the policy's queries from an
+  in-memory fake directory.
+---
+
+# DirXML policy testing
+
+This repo is a headless harness that runs the IDM engine's *own* policy
+interpreter against sample inputs. You author an event and directory state, run a
+policy chain, read the per-stage output and trace, edit the policy, and re-run —
+all from the `bin/sim` CLI. It is higher fidelity than Designer's simulator (it's
+the real engine) and scriptable.
+
+## First: verify setup
+
+Run the self-check before anything else:
+
+```
+bin/sim doctor
+```
+
+`DOCTOR: OK` means JDK 21, the engine jars, and a smoke run are all good. If it
+reports problems:
+- **JDK 21 missing** — the 4.10.1 engine jars are Java 21 bytecode. Install a
+  JDK 21 or set `SIM_JAVA_HOME`.
+- **engine jars INCOMPLETE** — the 8 proprietary NetIQ jars must be staged in
+  `lib/` (they are gitignored). See `lib/README.md` for the list; copy them from
+  an IDM install or an "IDM Driver Dependencies" set.
+- Build with `mvn compile` (or `bin/sim` auto-builds on first run).
+
+## The loop
+
+1. **Create a case** (a directory under `cases/`) — see "Case layout" below.
+2. **Run it**: `bin/sim run <caseDir>` (final output + per-stage summary), or
+   `bin/sim step <caseDir>` to see every stage's input→output, the queries it
+   issued, and its rule trace.
+3. **Diagnose** from the step output: find the stage where a value first appears,
+   gets vetoed, or comes out wrong. Read that stage's `TRACE`.
+4. **Edit the policy** (the `.xml` file the case points at — a real Designer
+   `*_contents.xml`, an exported policy, or one you write).
+5. **Re-run**, or `bin/sim test <caseDir>` to check against a recorded golden.
+
+## Commands
+
+```
+bin/sim run    <caseDir> [--trace]   # run chain; final output (+ full trace)
+bin/sim step   <caseDir>             # per-stage input/output/queries/commands/trace
+bin/sim test   <caseDir>             # diff vs expected-*.xds; exit 0 pass, 1 mismatch
+bin/sim record <caseDir>             # write expected-output.xds / expected-directory.xds
+bin/sim doctor                       # setup self-check
+```
+
+`test` is the agent signal: exit 0 = pass, exit 1 = mismatch (with a diff). Seed a
+golden once the output looks right with `record`, then `test` guards regressions.
+
+## Case layout
+
+```
+cases/<name>/
+  case.properties        # config (see below)
+  chain.txt              # ordered stages: "stageName = policy.xml" per line  (OR use export=)
+  input.xds              # the operation to run (the event)
+  directory.xds          # optional: initial fake-directory state (<instance> set)
+  gcv.xml                # optional: GCV definitions (overrides export GCVs)
+  expected-output.xds    # golden (written by `record`)
+  expected-directory.xds # optional golden: directory end-state
+```
+
+`case.properties` keys (all optional): `driverDN`, `dnFormat` (default `slash`),
+`fromNDS` (default `true` = eDir→app / Subscriber-side), `traceLevel` (1–5).
+
+Two ways to define the chain:
+- **Explicit** — `chain.txt`, one stage per line in channel order.
+- **From a driver export** — set in `case.properties`:
+  ```
+  export=../../MyDriver.xml
+  channel=publisher      # or subscriber
+  ```
+  The harness reads the Designer "Export Driver Configuration", assembles the
+  real subscriber/publisher chain in IDM policy-set order, and loads that
+  driver's GCVs automatically.
+
+## Authoring inputs, directory state, and reading output
+
+XDS event/instance/query shapes, the fake-directory model, channel order, trace
+reading, and how to drive a real driver export are in
+[reference/xds-and-cases.md](reference/xds-and-cases.md).
+
+Common pitfalls (DOM Level 2, GCV `display-name` requirement, `fromNDS`
+direction, empty-output vetoes, JDK 21) are in
+[reference/troubleshooting.md](reference/troubleshooting.md). Read these before
+hand-writing XDS or diagnosing a confusing result.
+
+## Worked example
+
+`cases/copy-surname/` is a complete, passing case: a policy that reads `Surname`
+from the directory via a query and stamps a copy. Run `bin/sim step
+cases/copy-surname` to see the issued `<query>`, the directory's answer, and the
+value flowing into the output. Copy it as a starting template.
