@@ -17,6 +17,9 @@ import java.nio.file.Paths;
 public final class Cli {
 
     public static void main(String[] args) {
+        if (args.length >= 1 && args[0].equals("doctor")) {
+            System.exit(doDoctor());
+        }
         if (args.length < 2) {
             usage();
             System.exit(2);
@@ -134,6 +137,63 @@ public final class Cli {
             System.out.println("wrote " + c.expectedDirectory);
         }
         return 0;
+    }
+
+    /** Self-check: JDK, engine jars, and a smoke run of the bundled sample case. */
+    private static int doDoctor() {
+        boolean ok = true;
+        System.out.println("DirXML Policy Simulator — doctor");
+
+        String ver = System.getProperty("java.version", "?");
+        boolean is21 = ver.startsWith("21");
+        System.out.println("  java.version: " + ver + (is21 ? "  OK" : "  WARN (need JDK 21)"));
+        ok &= is21;
+
+        String[] engineClasses = {
+            "com.novell.nds.dirxml.engine.rules.DirXMLScriptProcessor",
+            "com.novell.nds.dirxml.engine.gcv.GCDefinitions",
+            "com.novell.nds.dirxml.driver.XmlDocument",
+            "com.novell.xml.dom.DocumentImpl",
+            "novell.jclient.JCContext",
+        };
+        boolean jars = true;
+        for (String c : engineClasses) {
+            try {
+                // initialize=false: JCContext's static init loads a native lib we
+                // never actually touch (it's only ever a null parameter type).
+                Class.forName(c, false, Cli.class.getClassLoader());
+            } catch (Throwable t) {
+                jars = false;
+                System.out.println("  MISSING class " + c + " — check lib/ jars");
+            }
+        }
+        System.out.println("  engine jars: " + (jars ? "OK" : "INCOMPLETE"));
+        ok &= jars;
+
+        if (jars) {
+            try {
+                EngineContext ctx = EngineContext.create("\\x\\y\\z");
+                new ChannelSimulator(ctx, new FakeDirectory())
+                    .add(PolicyStage.fromElement("smoke",
+                        PolicyLoader.load("<policy><rule><description>x</description>"
+                            + "<conditions/><actions/></rule></policy>"), ctx))
+                    .run("<nds dtdversion='4.0'><input><add class-name='User'/></input></nds>");
+                System.out.println("  engine smoke run: OK");
+            } catch (Throwable t) {
+                ok = false;
+                System.out.println("  engine smoke run: FAIL — " + t);
+            }
+        }
+
+        Path sample = Paths.get("cases/copy-surname");
+        if (Files.isDirectory(sample)) {
+            int rc = doTest(sample);
+            System.out.println("  sample case cases/copy-surname: " + (rc == 0 ? "PASS" : "FAIL"));
+            ok &= rc == 0;
+        }
+
+        System.out.println(ok ? "DOCTOR: OK" : "DOCTOR: PROBLEMS FOUND");
+        return ok ? 0 : 1;
     }
 
     // ---- helpers -------------------------------------------------------------

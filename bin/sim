@@ -1,5 +1,37 @@
 #!/bin/sh
-# DirXML Policy Simulator CLI launcher (JDK 21 required for the 4.10.1 engine).
+# DirXML Policy Simulator CLI launcher.
+#
+# Requires JDK 21 (the 4.10.1 engine jars are Java 21 bytecode). Resolution order:
+#   1. $SIM_JAVA_HOME if set
+#   2. /usr/libexec/java_home -v 21 (macOS)
+#   3. common JVM locations
 HERE=$(cd "$(dirname "$0")/.." && pwd)
-JAVA_HOME="${SIM_JAVA_HOME:-/Users/jcombs/Library/Java/JavaVirtualMachines/azul-21.0.8/Contents/Home}"
-exec "$JAVA_HOME/bin/java" -cp "$HERE/target/classes:$HERE/lib/*" com.pointblue.dirxml.sim.Cli "$@"
+
+find_java21() {
+    if [ -n "$SIM_JAVA_HOME" ] && [ -x "$SIM_JAVA_HOME/bin/java" ]; then
+        echo "$SIM_JAVA_HOME"; return 0
+    fi
+    if [ -x /usr/libexec/java_home ]; then
+        JH=$(/usr/libexec/java_home -v 21 2>/dev/null) && [ -n "$JH" ] && { echo "$JH"; return 0; }
+    fi
+    for c in \
+        "$HOME/Library/Java/JavaVirtualMachines"/*21*/Contents/Home \
+        /Library/Java/JavaVirtualMachines/*21*/Contents/Home \
+        /usr/lib/jvm/*21*; do
+        [ -x "$c/bin/java" ] && { echo "$c"; return 0; }
+    done
+    return 1
+}
+
+JH=$(find_java21) || {
+    echo "ERROR: JDK 21 not found. Set SIM_JAVA_HOME to a JDK 21 home." >&2
+    exit 4
+}
+
+# Build if needed (classes absent).
+if [ ! -d "$HERE/target/classes" ]; then
+    echo "building (target/classes missing)…" >&2
+    (cd "$HERE" && JAVA_HOME="$JH" mvn -q compile) || { echo "ERROR: build failed" >&2; exit 5; }
+fi
+
+exec "$JH/bin/java" -cp "$HERE/target/classes:$HERE/lib/*" com.pointblue.dirxml.sim.Cli "$@"

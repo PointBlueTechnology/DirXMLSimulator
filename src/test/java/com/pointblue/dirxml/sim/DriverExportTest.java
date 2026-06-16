@@ -54,6 +54,38 @@ public class DriverExportTest {
         assertEquals("output-transform:otp", chain.get(4).name());
     }
 
+    /** An export carrying one GCV plus a subscriber policy that reads it. */
+    private static final String EXPORT_WITH_GCV =
+        "<driver-configuration name='G' dn='cn=G,cn=ds,o=s'>" +
+        "  <attributes><global-config-values><configuration-values><definitions>" +
+        "    <definition name='test.gcv.greeting' display-name='Greeting' type='string'><value>hello-from-gcv</value></definition>" +
+        "  </definitions></configuration-values></global-config-values></attributes>" +
+        "  <policy-linkage>" +
+        "    <linkage-item dn='cn=ev,cn=Subscriber,cn=G,cn=ds,o=s' order='0' policy-set='4' policy-set-name='Subscriber Event'/>" +
+        "  </policy-linkage>" +
+        "  <subscriber name='Subscriber'><children>" +
+        "    <rule name='ev'><policy><rule><description>stamp greeting from gcv</description>" +
+        "      <conditions/><actions>" +
+        "        <do-set-dest-attr-value name='Greeting'>" +
+        "          <arg-value type='string'><token-global-variable name='test.gcv.greeting'/></arg-value>" +
+        "        </do-set-dest-attr-value>" +
+        "      </actions></rule></policy></rule>" +
+        "  </children></subscriber>" +
+        "</driver-configuration>";
+
+    @Test
+    public void globalVariableResolvesFromExport() {
+        DriverExport ex = DriverExport.load(Xds.parse(EXPORT_WITH_GCV));
+        EngineContext ctx = EngineContext.create("\\sys\\ds\\G", "slash", true, ex.gcvDefinitions());
+        ChannelSimulator.Result r = new ChannelSimulator(ctx, new FakeDirectory())
+            .addAll(ex.subscriberChain(ctx))
+            .run("<nds dtdversion='4.0'><input>" +
+                 "<add class-name='User' src-dn='\\sys\\u\\x'>" +
+                 "<add-attr attr-name='Surname'><value>Doe</value></add-attr></add></input></nds>");
+        assertTrue("GCV value should flow into output: " + r.finalXds,
+            r.finalXds.contains("hello-from-gcv"));
+    }
+
     @Test
     public void exportChainRunsEndToEnd() {
         DriverExport ex = DriverExport.load(Xds.parse(EXPORT));
