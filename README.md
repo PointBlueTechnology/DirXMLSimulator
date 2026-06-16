@@ -11,6 +11,10 @@ Higher fidelity than Designer's manual Policy Simulator (it's the real engine),
 and scriptable so an agent can author inputs, run, read the trace, edit the
 policy, and re-run in a loop.
 
+> **New here?** Read [docs/intro.md](docs/intro.md) — a plain-English overview of
+> what an agent can do with this, how you provide an export and traces, and
+> example asks.
+
 ## What it does
 
 - **Runs real policies headlessly** — the engine's `DirXMLScriptProcessor` with
