@@ -107,9 +107,12 @@ public final class Case {
             ChannelSimulator sim = new ChannelSimulator(ctx, directory);
             if (export != null) {
                 String channel = p.getProperty("channel", "subscriber").trim().toLowerCase();
-                sim.addAll("publisher".equals(channel)
-                    ? export.publisherChain(ctx)
-                    : export.subscriberChain(ctx));
+                boolean publisher = "publisher".equals(channel);
+                // Optional leading filter stage (drops ignored classes/attrs).
+                if (Boolean.parseBoolean(p.getProperty("filter", "false")) && export.filter() != null) {
+                    sim.add(PolicyStage.filter("filter", export.filter(), publisher));
+                }
+                sim.addAll(publisher ? export.publisherChain(ctx) : export.subscriberChain(ctx));
             } else {
                 for (Stage s : readChain(caseDir)) {
                     sim.add(PolicyStage.fromFile(s.name, caseDir.resolve(s.policyPath), ctx));

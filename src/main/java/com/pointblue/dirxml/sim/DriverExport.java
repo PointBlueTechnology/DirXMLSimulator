@@ -91,6 +91,11 @@ public final class DriverExport {
         return driverName;
     }
 
+    /** The driver's filter element ({@code <filter>}), or null if the export has none. */
+    public Element filter() {
+        return Xds.firstByName(root, "filter");
+    }
+
     public static DriverExport load(Path file) {
         return load(Xds.parseFile(file));
     }

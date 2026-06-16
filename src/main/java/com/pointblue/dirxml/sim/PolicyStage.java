@@ -134,6 +134,11 @@ public final class PolicyStage {
         }
     }
 
+    /** A channel filter stage (drops ignored classes / strips ignored attributes). */
+    public static PolicyStage filter(String name, Element filterXml, boolean publisherChannel) {
+        return new PolicyStage(name, new FilterRuleProcessor(filterXml, publisherChannel), null, "filter");
+    }
+
     /** Build a stage by loading a policy file (Designer *_contents.xml, export, etc.). */
     public static PolicyStage fromFile(Path file, EngineContext ctx) {
         return fromElement(file.getFileName().toString(), PolicyLoader.load(file), ctx);

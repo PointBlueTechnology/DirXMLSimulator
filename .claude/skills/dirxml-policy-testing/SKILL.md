@@ -110,10 +110,13 @@ Two ways to define the chain:
   ```
   export=../../MyDriver.xml
   channel=publisher      # or subscriber
+  filter=true            # optional: prepend the driver's filter (drops ignored classes/attrs)
   ```
   The harness reads the Designer "Export Driver Configuration", assembles the
   real subscriber/publisher chain in IDM policy-set order, and loads that
-  driver's GCVs automatically.
+  driver's GCVs and ECMAScript resources automatically. With `filter=true` it also
+  prepends a filter stage that drops classes/attributes the driver filter ignores
+  on that channel (off by default).
 
 ## Authoring inputs, directory state, and reading output
 
