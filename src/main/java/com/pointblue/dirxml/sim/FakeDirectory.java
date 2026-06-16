@@ -55,6 +55,8 @@ public final class FakeDirectory implements XdsQueryProcessor, XdsCommandProcess
     private final Map<String, Entry> entries = new LinkedHashMap<>();
     private final List<String> queryLog = new ArrayList<>();
     private final List<String> commandLog = new ArrayList<>();
+    private final Map<String, List<Entry>> pagedResults = new LinkedHashMap<>();
+    private int tokenCounter = 0;
 
     // ---- loading state -------------------------------------------------------
 
@@ -121,25 +123,37 @@ public final class FakeDirectory implements XdsQueryProcessor, XdsCommandProcess
     public Document query(Document queryDoc) {
         queryLog.add(Xds.serialize(queryDoc));
         Element q = Xds.firstByName(queryDoc.getDocumentElement(), "query");
+        boolean isQueryEx = false;
         if (q == null) {
             q = Xds.firstByName(queryDoc.getDocumentElement(), "query-ex");
+            isQueryEx = q != null;
         }
         if (q == null) {
             return wrapOutput("");
         }
+        ReadAttrs read = readReadAttrs(q);
 
+        if (isQueryEx) {
+            return queryEx(q, read);
+        }
+        StringBuilder sb = new StringBuilder();
+        for (Entry e : findMatches(q)) {
+            sb.append(renderInstance(e, read));
+        }
+        return wrapOutput(sb.toString());
+    }
+
+    /** Evaluate the search criteria of a query/query-ex against the directory. */
+    private List<Entry> findMatches(Element q) {
         String wantClass = q.getAttribute("class-name");
         Element scEl = firstChild(q, "search-class");
         if (scEl != null && !scEl.getAttribute("class-name").isEmpty()) {
             wantClass = scEl.getAttribute("class-name");
         }
-        String scope = q.getAttribute("scope");
         String destDn = q.getAttribute("dest-dn");
         String srcDn = q.getAttribute("src-dn");
         String assoc = readAssociation(q);
-
         List<MatchAttr> criteria = readSearchAttrs(q);
-        ReadAttrs read = readReadAttrs(q);
 
         List<Entry> matches = new ArrayList<>();
         for (Entry e : entries.values()) {
@@ -164,10 +178,49 @@ public final class FakeDirectory implements XdsQueryProcessor, XdsCommandProcess
             }
             matches.add(e);
         }
+        return matches;
+    }
 
+    /**
+     * Paged query-ex: returns up to {@code max-result-count} instances and a
+     * {@code <query-token>} when more remain. A follow-up query-ex carrying that
+     * token continues from where the previous page left off; a {@code <cancel/>}
+     * drops the cached page. No token + no cancel starts a fresh search.
+     */
+    private Document queryEx(Element q, ReadAttrs read) {
+        if (firstChild(q, "cancel") != null) {
+            String tok = textOfChild(q, "query-token");
+            if (tok != null) {
+                pagedResults.remove(tok);
+            }
+            return wrapOutput("");
+        }
+        int max = parseIntAttr(q.getAttribute("max-result-count"), Integer.MAX_VALUE);
+        if (max <= 0) {
+            max = Integer.MAX_VALUE;
+        }
+        String token = textOfChild(q, "query-token");
+
+        List<Entry> remaining;
+        if (token != null && !token.isEmpty()) {
+            remaining = pagedResults.remove(token);
+            if (remaining == null) {
+                return wrapOutput(""); // unknown/expired token
+            }
+        } else {
+            remaining = new ArrayList<>(findMatches(q));
+        }
+
+        int n = Math.min(max, remaining.size());
         StringBuilder sb = new StringBuilder();
-        for (Entry e : matches) {
-            sb.append(renderInstance(e, read));
+        for (int i = 0; i < n; i++) {
+            sb.append(renderInstance(remaining.get(i), read));
+        }
+        List<Entry> rest = new ArrayList<>(remaining.subList(n, remaining.size()));
+        if (!rest.isEmpty()) {
+            String next = "qtok-" + (++tokenCounter);
+            pagedResults.put(next, rest);
+            sb.append("<query-token>").append(next).append("</query-token>");
         }
         return wrapOutput(sb.toString());
     }
@@ -360,6 +413,19 @@ public final class FakeDirectory implements XdsQueryProcessor, XdsCommandProcess
     private static Element firstChild(Element parent, String localName) {
         List<Element> kids = Xds.childrenByName(parent, localName);
         return kids.isEmpty() ? null : kids.get(0);
+    }
+
+    private static String textOfChild(Element parent, String localName) {
+        Element c = firstChild(parent, localName);
+        return c == null ? null : Xds.text(c).trim();
+    }
+
+    private static int parseIntAttr(String s, int dflt) {
+        try {
+            return Integer.parseInt(s.trim());
+        } catch (Exception e) {
+            return dflt;
+        }
     }
 
     private String targetDn(Element op) {
