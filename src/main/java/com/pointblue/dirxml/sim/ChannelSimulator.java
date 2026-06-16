@@ -100,7 +100,13 @@ public final class ChannelSimulator {
             try {
                 doc = stage.apply(doc, dyn);
             } catch (Exception e) {
-                throw new RuntimeException("Stage '" + stage.name() + "' failed: " + e, e);
+                // A failing stage shouldn't crash the run — record it and stop, so
+                // the snapshots up to the failure (and the error) are still shown.
+                String t = ctx.trace().substring(Math.min(traceMark, ctx.trace().length()));
+                Throwable cause = e.getCause() != null ? e.getCause() : e;
+                snapshots.add(new StageSnapshot(stage.name(), inXds, inXds, t,
+                    dir.drainQueries(), dir.drainCommands(), cause.getMessage()));
+                break;
             }
             String outXds = Xds.serialize(doc);
             String stageTrace = ctx.trace().substring(Math.min(traceMark, ctx.trace().length()));

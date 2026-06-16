@@ -71,7 +71,9 @@ public final class Case {
             Path gcvFile = caseDir.resolve("gcv.xml");
             if (Files.exists(gcvFile)) {
                 try {
-                    gcv.merge(GCDefinitions.construct(Xds.parseFile(gcvFile)));
+                    // construct(Node) wants the parent of <configuration-values>.
+                    gcv.merge(GCDefinitions.construct(
+                        (org.w3c.dom.Node) Xds.parseFile(gcvFile).getDocumentElement()));
                 } catch (Throwable t) {
                     System.err.println("warning: could not parse gcv.xml: " + t);
                 }

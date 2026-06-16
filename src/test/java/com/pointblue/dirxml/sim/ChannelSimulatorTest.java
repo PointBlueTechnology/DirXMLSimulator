@@ -89,6 +89,41 @@ public class ChannelSimulatorTest {
     }
 
     @Test
+    public void autoDriverDnResolves() {
+        // dirxml.auto.driverdn is auto-seeded from the driver DN (the engine does
+        // this at runtime; exports don't carry it).
+        EngineContext ctx = EngineContext.create("\\TREE\\sys\\DS\\MyDriver");
+        String policy =
+            "<policy><rule><description>stamp driverdn</description><conditions/><actions>" +
+            "<do-set-dest-attr-value name='DDN'>" +
+            "<arg-value type='string'><token-global-variable name='dirxml.auto.driverdn'/></arg-value>" +
+            "</do-set-dest-attr-value></actions></rule></policy>";
+        ChannelSimulator.Result r = new ChannelSimulator(ctx, new FakeDirectory())
+            .add(PolicyStage.fromElement("t", PolicyLoader.load(policy), ctx))
+            .run(ADD_INPUT);
+        assertTrue("driver DN should resolve into output: " + r.finalXds,
+            r.finalXds.contains("MyDriver"));
+    }
+
+    @Test
+    public void stageErrorIsGraceful() {
+        // A policy that throws (ECMAScript function with no script processor) must
+        // not crash the run; it's captured as a stage error.
+        EngineContext ctx = EngineContext.create("\\T\\sys\\DS\\D");
+        String boom =
+            "<policy xmlns:es='http://www.novell.com/nxsl/ecmascript'>" +
+            "<rule><description>boom</description><conditions/><actions>" +
+            "<do-set-dest-attr-value name='X'>" +
+            "<arg-value type='string'><token-xpath expression=\"es:guid2string('x')\"/></arg-value>" +
+            "</do-set-dest-attr-value></actions></rule></policy>";
+        ChannelSimulator.Result r = new ChannelSimulator(ctx, new FakeDirectory())
+            .add(PolicyStage.fromElement("boom", PolicyLoader.load(boom), ctx))
+            .run(ADD_INPUT); // does not throw
+        assertEquals(1, r.stages.size());
+        assertNotNull("stage should have recorded an error", r.stages.get(0).error);
+    }
+
+    @Test
     public void policyQueriesFakeDirectory() {
         // Directory holds jdoe with a Surname the policy will copy via a query.
         FakeDirectory dir = new FakeDirectory().loadState(Xds.parse(

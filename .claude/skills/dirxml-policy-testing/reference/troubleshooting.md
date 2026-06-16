@@ -24,8 +24,19 @@
 - **A `token-global-variable` resolves to empty.** The GCV isn't in scope. If
   using an export, confirm the name exists in it; otherwise supply a `gcv.xml`.
   Hand-written GCV `<definition>`s need a `display-name` or the engine silently
-  rejects the block. Engine auto-GCVs like `dirxml.auto.driverdn` are **not** in
-  exports — set `driverDN` in `case.properties` and/or add the value to `gcv.xml`.
+  rejects the block. `dirxml.auto.driverdn` is auto-seeded from `driverDN` in
+  `case.properties` (set that to a realistic slash DN if a policy queries the
+  driver object); other `dirxml.auto.*` engine GCVs aren't populated — add them to
+  `gcv.xml` if a policy needs them.
+- **`Script processor not available for 'PYTHON'` / `es:` function fails.** The
+  policy calls an ECMAScript extension function (e.g. `es:guid2string`) defined in
+  the driver's ECMAScript resources. The harness doesn't load a script engine, so
+  these rules error (shown as a `[ERROR]` stage, not a crash — the rest of the
+  step still runs). Test the non-ECMAScript rules, or stub the value with a
+  `gcv.xml` / a simplified policy.
+- **A stage shows `[ERROR]`.** The policy threw (bad XPath, unavailable script
+  function, unresolvable target). The run stops at that stage but shows all prior
+  snapshots and the error message; the offending action is named in the message.
 - **A queried value is missing/wrong.** In `step`, read the stage's QUERIES: did
   the policy ask for that attribute, with what `<search-attr>`/scope? Then check
   `directory.xds` actually contains a matching `<instance>` with that attr.

@@ -55,7 +55,32 @@ public final class EngineContext {
             null,             // Driver -- null works for policies that don't use fanout/driver-filter
             new java.util.TreeMap<>(),   // driver variables (scope="driver")
             REGEX_ESC_CHARS);
+        addAutoGcvs(gcv, driverDN);
         return new EngineContext(ctx, tracer);
+    }
+
+    /**
+     * The engine auto-populates {@code dirxml.auto.driverdn} (and friends) at
+     * runtime; exports don't carry them. Many real policies reference it (e.g. a
+     * {@code token-query} with {@code arg-dn(token-global-variable("dirxml.auto.driverdn"))}),
+     * so seed it from the driver DN when not already defined.
+     */
+    private static void addAutoGcvs(GCDefinitions gcv, String driverDN) {
+        if (gcv.getValue("dirxml.auto.driverdn") != null) {
+            return;
+        }
+        String esc = driverDN.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+        String doc = "<nds><configuration-values><definitions>"
+            + "<definition name=\"dirxml.auto.driverdn\" display-name=\"Driver DN\" type=\"string\"><value>"
+            + esc + "</value></definition>"
+            + "</definitions></configuration-values></nds>";
+        try {
+            // construct(Node) looks for a <configuration-values> child of the node,
+            // so pass the document element (whose child it is), not the Document.
+            gcv.merge(GCDefinitions.construct((org.w3c.dom.Node) Xds.parse(doc).getDocumentElement()));
+        } catch (Throwable t) {
+            System.err.println("warning: could not set dirxml.auto.driverdn: " + t);
+        }
     }
 
     public RuleStaticContext staticContext() {

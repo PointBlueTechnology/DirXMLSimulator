@@ -17,15 +17,23 @@ public final class StageSnapshot {
     public final String trace;
     public final List<String> queries;
     public final List<String> commands;
+    /** Non-null if this stage threw (e.g. a policy error); output equals input. */
+    public final String error;
 
     public StageSnapshot(String stageName, String inputXds, String outputXds,
                          String trace, List<String> queries, List<String> commands) {
+        this(stageName, inputXds, outputXds, trace, queries, commands, null);
+    }
+
+    public StageSnapshot(String stageName, String inputXds, String outputXds,
+                         String trace, List<String> queries, List<String> commands, String error) {
         this.stageName = stageName;
         this.inputXds = inputXds;
         this.outputXds = outputXds;
         this.trace = trace;
         this.queries = queries;
         this.commands = commands;
+        this.error = error;
     }
 
     /** True if this stage changed the document. */

@@ -88,8 +88,12 @@ public final class Cli {
         ChannelSimulator.Result r = c.sim.run(c.input, perRule);
         for (StageSnapshot s : r.stages) {
             System.out.println("============================================================");
-            System.out.println("STAGE: " + s.stageName + (s.changed() ? "  [changed]" : "  [no-op]"));
+            System.out.println("STAGE: " + s.stageName
+                + (s.error != null ? "  [ERROR]" : s.changed() ? "  [changed]" : "  [no-op]"));
             System.out.println("------------------------------------------------------------");
+            if (s.error != null) {
+                System.out.println("ERROR: " + s.error);
+            }
             System.out.println("INPUT:\n" + pretty(s.inputXds));
             System.out.println("OUTPUT:\n" + pretty(s.outputXds));
             if (!s.queries.isEmpty()) {
