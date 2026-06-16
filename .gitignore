@@ -18,3 +18,4 @@ TraceLog*.txt
 # Trace sample logs (proprietary client data — large)
 trace samples/
 *.trace
+.DS_Store
