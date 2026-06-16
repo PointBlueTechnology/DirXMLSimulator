@@ -10,3 +10,11 @@ lib/*.jar
 *.xml
 !cases/**/*.xml
 cases/jfw-ukg-local/
+
+# Production trace logs (proprietary client data)
+*.log
+TraceLog*.txt
+
+# Trace sample logs (proprietary client data — large)
+trace samples/
+*.trace

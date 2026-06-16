@@ -36,9 +36,28 @@ reports problems:
   an IDM install or an "IDM Driver Dependencies" set.
 - Build with `mvn compile` (or `bin/sim` auto-builds on first run).
 
+## Where inputs come from
+
+Don't guess what an event or directory state should look like — **mine a
+production trace**. Given a DirXML / DSTrace log, extract real events, queries,
+and the directory's responses into a ready-to-run case:
+
+```
+bin/sim extract <traceFile> <outDir>
+```
+
+This writes `input.xds` (the real input event), `directory.xds` (instances the
+directory actually returned, so the policy's lookups resolve), a
+`case.properties` stub with the channel inferred, and `trace-samples/` (every
+document the trace carried, labeled by channel + kind). Then set `export=` in
+`case.properties` and `step` it. See
+[reference/traces.md](reference/traces.md) for the trace format, what each
+document marker means, and how to read the rule trace to debug.
+
 ## The loop
 
-1. **Create a case** (a directory under `cases/`) — see "Case layout" below.
+1. **Create a case** — `extract` from a trace (above), copy `cases/copy-surname`,
+   or hand-author a directory under `cases/`. See "Case layout" below.
 2. **Run it**: `bin/sim run <caseDir>` (final output + per-stage summary), or
    `bin/sim step <caseDir>` to see every stage's input→output, the queries it
    issued, and its rule trace.
@@ -55,6 +74,7 @@ bin/sim run    <caseDir> [--trace]   # run chain; final output (+ full trace)
 bin/sim step   <caseDir>             # per-stage input/output/queries/commands/trace
 bin/sim test   <caseDir>             # diff vs expected-*.xds; exit 0 pass, 1 mismatch
 bin/sim record <caseDir>             # write expected-output.xds / expected-directory.xds
+bin/sim extract <trace> <outDir>     # mine a DSTrace log into a case (input + directory + samples)
 bin/sim doctor                       # setup self-check
 ```
 

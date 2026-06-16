@@ -20,6 +20,19 @@ public final class Cli {
         if (args.length >= 1 && args[0].equals("doctor")) {
             System.exit(doDoctor());
         }
+        if (args.length >= 1 && args[0].equals("extract")) {
+            if (args.length < 3) {
+                System.err.println("usage: extract <traceFile> <outDir>");
+                System.exit(2);
+            }
+            try {
+                System.out.println(TraceExtract.extractToDir(Paths.get(args[1]), Paths.get(args[2])));
+                System.exit(0);
+            } catch (Exception e) {
+                System.err.println("ERROR: " + e.getMessage());
+                System.exit(3);
+            }
+        }
         if (args.length < 2) {
             usage();
             System.exit(2);
