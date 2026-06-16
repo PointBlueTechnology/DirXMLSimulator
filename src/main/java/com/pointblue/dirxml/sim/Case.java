@@ -59,13 +59,21 @@ public final class Case {
             boolean fromNDS = Boolean.parseBoolean(p.getProperty("fromNDS", "true"));
             int traceLevel = Integer.parseInt(p.getProperty("traceLevel", "4"));
 
+            // Load the driver export first (if any) so its GCVs feed the engine.
+            String exportRef = p.getProperty("export");
+            DriverExport export = null;
             GCDefinitions gcv = new GCDefinitions();
+            if (exportRef != null && !exportRef.isBlank()) {
+                export = DriverExport.load(caseDir.resolve(exportRef.trim()));
+                gcv = export.gcvDefinitions();
+            }
+            // A case-local gcv.xml overlays/overrides the export GCVs.
             Path gcvFile = caseDir.resolve("gcv.xml");
             if (Files.exists(gcvFile)) {
                 try {
-                    gcv = GCDefinitions.construct(Xds.parseFile(gcvFile));
+                    gcv.merge(GCDefinitions.construct(Xds.parseFile(gcvFile)));
                 } catch (Throwable t) {
-                    System.err.println("warning: could not parse gcv.xml, using empty GCVs: " + t);
+                    System.err.println("warning: could not parse gcv.xml: " + t);
                 }
             }
 
@@ -79,15 +87,11 @@ public final class Case {
             }
 
             ChannelSimulator sim = new ChannelSimulator(ctx, directory);
-            String exportRef = p.getProperty("export");
-            if (exportRef != null && !exportRef.isBlank()) {
-                // Derive the chain from a Designer driver export.
-                DriverExport export = DriverExport.load(caseDir.resolve(exportRef.trim()));
+            if (export != null) {
                 String channel = p.getProperty("channel", "subscriber").trim().toLowerCase();
-                List<PolicyStage> stages = "publisher".equals(channel)
+                sim.addAll("publisher".equals(channel)
                     ? export.publisherChain(ctx)
-                    : export.subscriberChain(ctx);
-                sim.addAll(stages);
+                    : export.subscriberChain(ctx));
             } else {
                 for (Stage s : readChain(caseDir)) {
                     sim.add(PolicyStage.fromFile(s.name, caseDir.resolve(s.policyPath), ctx));

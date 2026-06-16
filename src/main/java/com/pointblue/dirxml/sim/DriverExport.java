@@ -1,5 +1,7 @@
 package com.pointblue.dirxml.sim;
 
+import com.novell.nds.dirxml.engine.gcv.GCDefinitions;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -75,6 +77,7 @@ public final class DriverExport {
     }
 
     private final String driverName;
+    private Element root;
     /** (channel, rule-name) -> content element (policy / style-sheet / attr-name-map). */
     private final Map<String, Element> rulesByKey = new LinkedHashMap<>();
     /** policy-set id -> ordered linkages. */
@@ -95,9 +98,49 @@ public final class DriverExport {
     public static DriverExport load(Document doc) {
         Element root = doc.getDocumentElement(); // <driver-configuration>
         DriverExport ex = new DriverExport(root.getAttribute("name"));
+        ex.root = root;
         ex.indexRules(root, "driver");
         ex.readLinkage(root);
         return ex;
+    }
+
+    /**
+     * Build the driver's merged GCV definitions from every
+     * {@code <configuration-values>} block in the export (driver options,
+     * publisher/subscriber options, global engine values, and the
+     * {@code <global-config-values>} GCVs policies read via
+     * {@code token-global-variable}). Blocks that fail to parse are skipped.
+     */
+    public GCDefinitions gcvDefinitions() {
+        GCDefinitions merged = new GCDefinitions();
+        for (Element cv : allDescendants(root, "configuration-values")) {
+            // Only blocks that actually define values are worth merging.
+            if (Xds.firstByName(cv, "definition") == null) {
+                continue;
+            }
+            try {
+                // construct(Node) looks for a <configuration-values> child, so pass the parent.
+                merged.merge(GCDefinitions.construct(cv.getParentNode()));
+            } catch (Throwable t) {
+                System.err.println("warning: skipping a <configuration-values> block: " + t);
+            }
+        }
+        return merged;
+    }
+
+    private static List<Element> allDescendants(Node ctx, String localName) {
+        List<Element> out = new ArrayList<>();
+        NodeList kids = ctx.getChildNodes();
+        for (int i = 0; i < kids.getLength(); i++) {
+            Node k = kids.item(i);
+            if (k.getNodeType() == Node.ELEMENT_NODE) {
+                if (localName.equals(k.getLocalName())) {
+                    out.add((Element) k);
+                }
+                out.addAll(allDescendants(k, localName));
+            }
+        }
+        return out;
     }
 
     // ---- chain assembly ------------------------------------------------------

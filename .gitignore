@@ -9,3 +9,4 @@ lib/*.jar
 # Proprietary client driver exports — never commit
 *.xml
 !cases/**/*.xml
+cases/jfw-ukg-local/
