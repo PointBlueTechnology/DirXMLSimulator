@@ -13,7 +13,8 @@ policy, and re-run in a loop.
 
 > **New here?** Read [docs/intro.md](docs/intro.md) — a plain-English overview of
 > what an agent can do with this, how you provide an export and traces, and
-> example asks.
+> example asks. Then [docs/quickstart.md](docs/quickstart.md) walks you from
+> setup to stepping your own driver.
 
 ## What it does
 
@@ -35,7 +36,27 @@ policy, and re-run in a loop.
 ## Requirements
 
 - **JDK 21** — the 4.10.1 engine jars are Java 21 bytecode.
-- Maven. Proprietary NetIQ jars go in `lib/` (gitignored — see `lib/README.md`).
+- Maven.
+- **Nine proprietary NetIQ / OpenText jars in `lib/`** (gitignored — supply them
+  yourself). These are the standard IDM driver-dependency set, found on an IDM
+  **engine server** or **Remote Loader** install (and bundled with **Designer**):
+
+  | jar | provides |
+  |---|---|
+  | `dirxml.jar` | the IDM engine + policy interpreter (the core) |
+  | `dirxml_misc.jar` | engine support classes |
+  | `nxsl.jar` | XPath / XSLT / DirXML Script engine |
+  | `xp.jar` | the Novell XML parser / DOM |
+  | `xds.jar` (as `XDS.jar`) | XDS document support |
+  | `jclient.jar` | eDirectory client types (referenced, not connected) |
+  | `dhutil.jar` | low-level NDS utilities |
+  | `CommonDriverShim.jar` | driver shim base types |
+  | `js.jar` | repackaged Rhino — ECMAScript `es:` functions |
+
+  Match the version you target (this project uses **4.10.1**). On a server these
+  live in the engine/Remote-Loader classpath (e.g. an `.../lib` directory); copying
+  a driver's full dependency set is the easy way to get them all. Run
+  `bin/sim doctor` to confirm the set is complete.
 
 ## Build & test
 
