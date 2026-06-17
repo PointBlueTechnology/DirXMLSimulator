@@ -58,11 +58,27 @@ policy, and re-run in a loop.
   a driver's full dependency set is the easy way to get them all. Run
   `bin/sim doctor` to confirm the set is complete.
 
-## Build & test
+## Install from a release (no build)
+
+Grab `dirxml-simulator-<ver>.zip` from the
+[releases](https://github.com/PointBlueTechnology/DirXMLSimulator/releases), unzip
+it, drop your nine NetIQ jars into its `lib/`, and run — no clone, no Maven:
+
+```bash
+unzip dirxml-simulator-1.0.0.zip && cd dirxml-simulator-1.0.0
+cp /path/to/idm/*.jar lib/      # the 9 jars listed under Requirements
+bin/sim doctor                  # -> DOCTOR: OK
+```
+
+The archive bundles the compiled jar, `bin/sim`, the skill, sample cases, and
+docs. The proprietary jars are never bundled — you supply them.
+
+## Build from source & test
 
 ```bash
 export JAVA_HOME=.../zulu-21
-mvn test
+mvn test                        # run the suite
+./tools/build-dist.sh           # build the release archive (target/dist/…zip)
 ```
 
 ## Install it as a Claude Code skill

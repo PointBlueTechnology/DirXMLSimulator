@@ -28,10 +28,18 @@ JH=$(find_java21) || {
     exit 4
 }
 
-# Build if needed (classes absent).
-if [ ! -d "$HERE/target/classes" ]; then
-    echo "building (target/classes missing)…" >&2
+# Resolve the application code: a dev build (target/classes), a packaged jar
+# (release distribution), or build it if neither is present.
+if [ -d "$HERE/target/classes" ]; then
+    APP="$HERE/target/classes"
+elif [ -f "$(ls "$HERE"/dirxml-simulator-*.jar 2>/dev/null | head -1)" ]; then
+    APP=$(ls "$HERE"/dirxml-simulator-*.jar | head -1)
+elif [ -f "$(ls "$HERE"/target/dirxml-simulator-*.jar 2>/dev/null | head -1)" ]; then
+    APP=$(ls "$HERE"/target/dirxml-simulator-*.jar | head -1)
+else
+    echo "building (no target/classes or jar found)…" >&2
     (cd "$HERE" && JAVA_HOME="$JH" mvn -q compile) || { echo "ERROR: build failed" >&2; exit 5; }
+    APP="$HERE/target/classes"
 fi
 
-exec "$JH/bin/java" -cp "$HERE/target/classes:$HERE/lib/*" com.pointblue.dirxml.sim.Cli "$@"
+exec "$JH/bin/java" -cp "$APP:$HERE/lib/*" com.pointblue.dirxml.sim.Cli "$@"

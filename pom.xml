@@ -6,7 +6,7 @@
 
     <groupId>com.pointblue.dirxml</groupId>
     <artifactId>dirxml-simulator</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <name>DirXML Policy Simulator</name>
@@ -124,7 +124,10 @@
                             <mainClass>com.pointblue.dirxml.sim.Cli</mainClass>
                         </manifest>
                         <manifestEntries>
-                            <Class-Path>../lib/dirxml.jar ../lib/dirxml_misc.jar ../lib/nxsl.jar ../lib/xp.jar ../lib/CommonDriverShim.jar ../lib/jclient.jar ../lib/dhutil.jar ../lib/XDS.jar ../lib/js.jar</Class-Path>
+                            <!-- Both layouts: dev build (jar in target/, lib in ../lib)
+                                 and flat release distribution (jar + lib/ side by side).
+                                 Java ignores Class-Path entries that don't exist. -->
+                            <Class-Path>lib/dirxml.jar lib/dirxml_misc.jar lib/nxsl.jar lib/xp.jar lib/CommonDriverShim.jar lib/jclient.jar lib/dhutil.jar lib/XDS.jar lib/js.jar ../lib/dirxml.jar ../lib/dirxml_misc.jar ../lib/nxsl.jar ../lib/xp.jar ../lib/CommonDriverShim.jar ../lib/jclient.jar ../lib/dhutil.jar ../lib/XDS.jar ../lib/js.jar</Class-Path>
                         </manifestEntries>
                     </archive>
                 </configuration>
