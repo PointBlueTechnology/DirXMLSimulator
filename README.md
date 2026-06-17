@@ -16,6 +16,8 @@ policy, and re-run in a loop.
 > example asks. Then [docs/quickstart.md](docs/quickstart.md) walks you from
 > setup to stepping your own driver.
 
+![An agent running the copy-surname sample case: the harness drives the real IDM engine, queries the in-memory fake directory, and copies Surname into a new CopiedSurname attribute.](docs/sample-case.png)
+
 ## What it does
 
 - **Runs real policies headlessly** — the engine's `DirXMLScriptProcessor` with
