@@ -52,10 +52,12 @@ miniature.
 
 ## 3. Run your own driver from a trace + export
 
-### a. Get the two artifacts
+### a. Get the artifacts
 
-- **Driver export** — in Designer, export the driver configuration to a single
-  `.xml` file.
+- **Driver config** — either a **driver export** (`.xml` from Designer →
+  *Export to Configuration File*) **or** a **Designer project** on disk (your
+  `designer_workspace` project + the driver name). A project also carries the
+  schema, so inputs get validated.
 - **Trace** — a DSTrace / driver trace log from your environment (turn the driver
   trace level up, reproduce the event, save the log).
 
@@ -78,9 +80,9 @@ This creates `cases/my-test/` with:
 - `case.properties` — a stub with the channel inferred,
 - `trace-samples/` — every document in the trace, labeled.
 
-### c. Point the case at your export
+### c. Point the case at the driver config
 
-Edit `cases/my-test/case.properties` and add the export reference:
+Edit `cases/my-test/case.properties`. Use **either** an export:
 
 ```properties
 export=/path/to/driver.xml
@@ -88,8 +90,18 @@ channel=publisher        # or subscriber (the extract step inferred one)
 driverDN=\TREE\system\driverset\MyDriver
 ```
 
-That's it — the harness now assembles your real channel chain (in IDM policy-set
-order) and loads the driver's GCVs and ECMAScript resources from the export.
+**or** a Designer project + driver name:
+
+```properties
+project=/path/to/designer_workspace/MyProject
+driver=CyberArk-PROD
+channel=publisher
+driverDN=\TREE\system\driverset\MyDriver
+```
+
+Either way the harness assembles your real channel chain (in IDM policy-set order)
+and loads the driver's GCVs and ECMAScript resources. With `project=` it also loads
+the **schema** and validates `input.xds`/`directory.xds` against it.
 
 ### d. Step through it
 

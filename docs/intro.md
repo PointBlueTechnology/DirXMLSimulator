@@ -50,19 +50,20 @@ turn.
 ## The basic process
 
 ```
-  ┌─────────────┐     ┌─────────────┐     ┌──────────────────────────┐
-  │ driver       │     │ a trace from │     │  "Why isn't the email    │
-  │ export (.xml)│  +  │ your env     │  +  │   attribute syncing?"    │
-  └─────────────┘     └─────────────┘     └──────────────────────────┘
-         │                    │                         │
-         ▼                    ▼                         ▼
-   real policy chain    realistic inputs +        the agent runs, steps,
-   + GCVs + scripts     directory state           reads the trace, finds
-                                                   the rule, proposes a fix
+  ┌──────────────────┐   ┌─────────────┐   ┌──────────────────────────┐
+  │ driver export OR │   │ a trace from│   │  "Why isn't the email    │
+  │ Designer project │ + │ your env    │ + │   attribute syncing?"    │
+  └──────────────────┘   └─────────────┘   └──────────────────────────┘
+         │                      │                       │
+         ▼                      ▼                       ▼
+   real policy chain      realistic inputs +      the agent runs, steps,
+   + GCVs + scripts       directory state         reads the trace, finds
+   (+ schema)                                     the rule, proposes a fix
 ```
 
-1. **Give the agent a driver export.** It reads your channels, policies, filter,
-   GCVs, and ECMAScript resources, and assembles the real chain.
+1. **Give the agent a driver export — or a Designer project + driver name.** It
+   reads your channels, policies, filter, GCVs, and ECMAScript resources (and, from
+   a project, the schema), and assembles the real chain.
 2. **Give it a trace** from your environment. The agent mines it for a real input
    event and the directory data your policies looked up — so the test reflects
    actual traffic, not a guess.
@@ -72,13 +73,19 @@ turn.
 
 ## What you provide, and how to get it
 
-### A driver export
+### A driver's configuration — an export *or* a Designer project
 
-In **Designer**: right-click the driver → **Export to Configuration File** (or
-export the driver configuration). That single `.xml` contains everything the agent
-needs — the policy chain, schema mapping, filter, GCVs, and ECMAScript resources.
+Either of these gives the agent the real driver config; pick whichever you have.
 
-That's the only required artifact to run your real policies.
+- **A driver export.** In **Designer**: right-click the driver → **Export to
+  Configuration File**. That single `.xml` contains the policy chain, schema
+  mapping, filter, GCVs, and ECMAScript resources.
+- **A Designer project on disk.** Point the agent at your `designer_workspace`
+  project and name the driver — no export step. The agent walks the project to
+  assemble the same chain, **plus** the eDirectory **schema** (which an export
+  omits, and which lets it catch typo'd classes/attributes in your test inputs).
+
+Either one is the only required artifact to run your real policies.
 
 ### A trace (optional but recommended)
 
@@ -93,9 +100,9 @@ extracts from it:
 A single per-transaction trace is the easiest starting point; a full driver log
 works too (the agent picks the first event and merges the directory data).
 
-> Driver exports and traces are configuration and operational data from your
-> environment — treat them like any other sensitive artifact. The tooling keeps
-> them out of source control by default.
+> Driver exports, Designer projects, and traces are configuration and operational
+> data from your environment — treat them like any other sensitive artifact. The
+> tooling keeps them out of source control by default.
 
 ## Examples of what you could ask
 
