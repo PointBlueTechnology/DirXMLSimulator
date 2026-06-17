@@ -31,10 +31,14 @@ bin/sim doctor
 reports problems:
 - **JDK 21 missing** — the 4.10.1 engine jars are Java 21 bytecode. Install a
   JDK 21 or set `SIM_JAVA_HOME`.
-- **engine jars INCOMPLETE** — the 8 proprietary NetIQ jars must be staged in
+- **engine jars INCOMPLETE** — the 9 proprietary NetIQ jars must be staged in
   `lib/` (they are gitignored). See `lib/README.md` for the list; copy them from
   an IDM install or an "IDM Driver Dependencies" set.
 - Build with `mvn compile` (or `bin/sim` auto-builds on first run).
+
+> **Where to run:** `bin/sim` lives in the harness/project directory. Run commands
+> from there, or invoke it by full path (e.g. `/path/to/DirXMLSimulator/bin/sim`)
+> from another working directory. `caseDir` paths are relative to your cwd.
 
 ## Where inputs come from
 
@@ -86,6 +90,37 @@ bin/sim doctor                       # setup self-check
 
 `test` is the agent signal: exit 0 = pass, exit 1 = mismatch (with a diff). Seed a
 golden once the output looks right with `record`, then `test` guards regressions.
+
+## What each command prints (so you can interpret it without a trial run)
+
+- **`doctor`** — a checklist (`java.version`, `engine jars`, `engine smoke run`,
+  `sample case`) ending in `DOCTOR: OK` (exit 0) or `DOCTOR: PROBLEMS FOUND`
+  (exit 1), naming any missing class/jar.
+- **`run`** — `# stages: N`, then one line per stage
+  `- <name> [changed]|[no-op] [queries=N] [commands=N]`, then
+  `=== final output ===` and the final XDS. With `--trace`, also `=== trace ===`
+  and the full rule trace. Exit 0.
+- **`step`** — per stage, a block:
+  ```
+  STAGE: <name>  [changed] | [no-op] | [ERROR]
+  INPUT:  <xds>            OUTPUT: <xds>
+  QUERIES (n): …           COMMANDS (n): …      TRACE: …
+  ```
+  With `--rules`, DirXML Script stages expand to `STAGE: <stage> ▸ #N <rule desc>`.
+  A failed stage shows `[ERROR]` + an `ERROR: <message>` line and the run stops
+  there (earlier stages still shown) — it does not crash.
+- **`test`** — `output: PASS|FAIL|SKIP`, a first-difference diff on FAIL, optional
+  `directory: PASS|FAIL`, then `RESULT: PASS|FAIL`. Exit 0 pass, 1 mismatch.
+- **`extract`** — `parsed N XDS documents`, per-kind counts (event/query/
+  query-result/policy-returned/command/response), and which of `input.xds` /
+  `directory.xds` / `case.properties` / `trace-samples/` it wrote.
+- **Missing Java extension class** — `run`/`step`/`test` print a
+  `WARNING: Java extension classes not on the classpath: …` up front; calls to
+  them then surface as a stage `[ERROR]` ("function not found").
+
+Operation outcomes to recognize in output: an empty `<input/>` means the operation
+was **vetoed/stripped**; `[no-op]` means the stage's conditions didn't match or its
+actions were inert (the trace shows which).
 
 ## Case layout
 
