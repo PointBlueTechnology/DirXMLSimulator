@@ -36,6 +36,10 @@
   function is still undefined, its source isn't among the loaded scripts. (Some
   NetIQ built-in `es:` helpers live in product ECMAScript libraries, not the
   driver — supply those `.js` files in `ecmascript/` if a policy uses them.)
+
+  Scripting is **Rhino ECMAScript**, which is what IDM drivers use in practice. The
+  engine's other JSR-223 languages (Nashorn/Python/Ruby/Groovy) aren't wired and
+  aren't expected to be needed.
 - **`function 'foo:bar' not found` — Java extension class missing.** A policy can
   bind a namespace to a Java class and call its static methods:
   `xmlns:m="http://www.novell.com/nxsl/java/java.lang.Math"` then `m:max(3,7)`.
