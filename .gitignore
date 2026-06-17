@@ -20,3 +20,4 @@ trace samples/
 *.trace
 .DS_Store
 cases/proj-local/
+cases/schemachk/

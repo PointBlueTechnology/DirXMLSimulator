@@ -44,6 +44,7 @@ public final class DesignerProject {
     private final Map<String, Path> contentsById = new LinkedHashMap<>();
     private final Map<String, Path> metaById = new LinkedHashMap<>();
     private final Map<String, DriverRef> driversByName = new LinkedHashMap<>();
+    private final List<Path> schemaFiles = new ArrayList<>();
 
     private DesignerProject() {}
 
@@ -52,7 +53,9 @@ public final class DesignerProject {
         try (Stream<Path> walk = Files.walk(projectDir)) {
             walk.filter(Files::isRegularFile).forEach(f -> {
                 String fn = f.getFileName().toString();
-                if (fn.endsWith("_contents.xml")) {
+                if (fn.endsWith("_schema.xml")) {
+                    p.schemaFiles.add(f);
+                } else if (fn.endsWith("_contents.xml")) {
                     p.contentsById.put(fn.substring(0, fn.length() - "_contents.xml".length()), f);
                 } else if (fn.endsWith(".Driver_")) {
                     p.indexDriver(f);
@@ -84,6 +87,11 @@ public final class DesignerProject {
 
     public List<String> driverNames() {
         return new ArrayList<>(driversByName.keySet());
+    }
+
+    /** The project's eDirectory schema ({@code *_schema.xml}); empty if none found. */
+    public SchemaModel schema() {
+        return schemaFiles.isEmpty() ? SchemaModel.empty() : SchemaModel.parseFile(schemaFiles.get(0));
     }
 
     // ---- chain assembly ------------------------------------------------------

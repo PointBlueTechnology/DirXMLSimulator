@@ -88,6 +88,13 @@ public final class Cli {
             }
             System.out.println();
         }
+        if (!c.schemaWarnings.isEmpty()) {
+            System.out.println("WARNING: schema validation (input/directory vs the project schema):");
+            for (String w : c.schemaWarnings) {
+                System.out.println("  - " + w);
+            }
+            System.out.println();
+        }
         // Named passwords are supplied per case; warn only for referenced names with no value.
         java.util.Set<String> configured = c.directory.namedPasswordNames();
         java.util.List<String> unset = new java.util.ArrayList<>();

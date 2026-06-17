@@ -33,9 +33,10 @@ public final class Case {
     public final Document input;
     public final Path expectedOutput;     // may not exist
     public final Path expectedDirectory;  // may not exist
+    public final List<String> schemaWarnings;  // input/directory vs schema (empty if no schema)
 
     private Case(Path dir, EngineContext ctx, FakeDirectory directory, ChannelSimulator sim,
-                 Document input, Path expectedOutput, Path expectedDirectory) {
+                 Document input, Path expectedOutput, Path expectedDirectory, List<String> schemaWarnings) {
         this.dir = dir;
         this.ctx = ctx;
         this.directory = directory;
@@ -43,6 +44,7 @@ public final class Case {
         this.input = input;
         this.expectedOutput = expectedOutput;
         this.expectedDirectory = expectedDirectory;
+        this.schemaWarnings = schemaWarnings;
     }
 
     public static Case load(Path caseDir) {
@@ -164,9 +166,24 @@ public final class Case {
 
             Document input = Xds.parseFile(caseDir.resolve("input.xds"));
 
+            // Schema (from the project, or an explicit schema=<file|dir>) validates inputs.
+            SchemaModel schema = SchemaModel.empty();
+            String schemaRef = p.getProperty("schema");
+            if (schemaRef != null && !schemaRef.isBlank()) {
+                Path sp = caseDir.resolve(schemaRef.trim());
+                schema = Files.isDirectory(sp) ? DesignerProject.load(sp).schema()
+                    : SchemaModel.parseFile(sp);
+            } else if (project != null) {
+                schema = project.schema();
+            }
+            List<String> schemaWarnings = new ArrayList<>(schema.validate(input));
+            if (Files.exists(dirFile)) {
+                schemaWarnings.addAll(schema.validate(Xds.parseFile(dirFile)));
+            }
+
             Path expOut = caseDir.resolve("expected-output.xds");
             Path expDir = caseDir.resolve("expected-directory.xds");
-            return new Case(caseDir, ctx, directory, sim, input, expOut, expDir);
+            return new Case(caseDir, ctx, directory, sim, input, expOut, expDir, schemaWarnings);
         } catch (Exception e) {
             throw new RuntimeException("Failed to load case " + caseDir + ": " + e, e);
         }

@@ -118,6 +118,10 @@ golden once the output looks right with `record`, then `test` guards regressions
 - **Missing Java extension class** — `run`/`step`/`test` print a
   `WARNING: Java extension classes not on the classpath: …` up front; calls to
   them then surface as a stage `[ERROR]` ("function not found").
+- **Schema validation** — when a schema is available (`schema=` or `project=`),
+  `WARNING: schema validation …` flags an unknown class, an attribute not in the
+  schema (a typo), an attribute not valid for its class, or multiple values on a
+  single-valued attribute in `input.xds`/`directory.xds`.
 - **Named passwords** — supply with `namedPassword.<name>=<value>`; a referenced
   name with no value prints `WARNING: named password(s) referenced but not supplied`
   and resolves to empty.
@@ -155,9 +159,11 @@ cases/<name>/
 `fromNDS` (default `true` = eDir→app / Subscriber-side), `traceLevel` (1–5);
 `namedPassword.<name>=<value>` to supply a named password (a secret value, kept out
 of exports — same idea as a GCV; referenced names you don't supply resolve to empty
-and are warned); `fakeActions` (default `true`); and `restResponse=<body>` (or
+and are warned); `fakeActions` (default `true`); `restResponse=<body>` (or
 `restResponse.<urlSubstring>=<body>`, or a `rest-response.json` file) to supply the
-canned body a faked `do-invoke-rest-endpoint` returns.
+canned body a faked `do-invoke-rest-endpoint` returns; and `schema=<*_schema.xml or
+Designer project dir>` to validate `input.xds`/`directory.xds` against the eDir
+schema (auto-loaded when `project=` is set).
 
 Three ways to define the chain:
 - **Explicit** — `chain.txt`, one stage per line in channel order.
