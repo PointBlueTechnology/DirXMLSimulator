@@ -159,7 +159,7 @@ and are warned); `fakeActions` (default `true`); and `restResponse=<body>` (or
 `restResponse.<urlSubstring>=<body>`, or a `rest-response.json` file) to supply the
 canned body a faked `do-invoke-rest-endpoint` returns.
 
-Two ways to define the chain:
+Three ways to define the chain:
 - **Explicit** — `chain.txt`, one stage per line in channel order.
 - **From a driver export** — set in `case.properties`:
   ```
@@ -169,9 +169,23 @@ Two ways to define the chain:
   ```
   The harness reads the Designer "Export Driver Configuration", assembles the
   real subscriber/publisher chain in IDM policy-set order, and loads that
-  driver's GCVs and ECMAScript resources automatically. With `filter=true` it also
-  prepends a filter stage that drops classes/attributes the driver filter ignores
-  on that channel (off by default).
+  driver's GCVs and ECMAScript resources automatically.
+- **From a Designer project on disk** — point at the workspace project and name the
+  driver:
+  ```
+  project=/path/to/designer_workspace/MyProject
+  driver=CyberArk-PROD
+  channel=subscriber
+  filter=true            # optional
+  ```
+  The harness walks the project (`.Driver_`/`.Subscriber_`/`.Publisher_`
+  `relations`), resolves each policy's `_contents.xml`, and assembles the chain in
+  channel order — no export needed. It loads the project's ECMAScript resources
+  too. (A project also carries the **schema**, which an export omits.) The on-disk
+  Designer format is mapped by the companion `dirxml-designer-workspace` skill.
+
+With `filter=true` (export or project) a leading filter stage drops the
+classes/attributes the driver filter ignores on that channel (off by default).
 
 ## Authoring inputs, directory state, and reading output
 

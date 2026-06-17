@@ -59,13 +59,23 @@ public final class Case {
             boolean fromNDS = Boolean.parseBoolean(p.getProperty("fromNDS", "true"));
             int traceLevel = Integer.parseInt(p.getProperty("traceLevel", "4"));
 
-            // Load the driver export first (if any) so its GCVs feed the engine.
+            // Config source: a driver export, or a Designer project + driver name.
             String exportRef = p.getProperty("export");
             DriverExport export = null;
             GCDefinitions gcv = new GCDefinitions();
             if (exportRef != null && !exportRef.isBlank()) {
                 export = DriverExport.load(caseDir.resolve(exportRef.trim()));
                 gcv = export.gcvDefinitions();
+            }
+            String projectRef = p.getProperty("project");
+            String projectDriver = p.getProperty("driver");
+            DesignerProject project = null;
+            if (export == null && projectRef != null && !projectRef.isBlank()) {
+                project = DesignerProject.load(caseDir.resolve(projectRef.trim()));
+                if (projectDriver == null || projectDriver.isBlank()) {
+                    throw new IllegalArgumentException(
+                        "project= requires driver=<name>; drivers in project: " + project.driverNames());
+                }
             }
             // A case-local gcv.xml overlays/overrides the export GCVs.
             Path gcvFile = caseDir.resolve("gcv.xml");
@@ -105,6 +115,9 @@ public final class Case {
             if (export != null) {
                 ecma.addAll(export.ecmaScriptSources());
             }
+            if (project != null) {
+                ecma.addAll(project.ecmaScriptSources());
+            }
             Path ecmaDir = caseDir.resolve("ecmascript");
             if (Files.isDirectory(ecmaDir)) {
                 try (var paths = Files.list(ecmaDir)) {
@@ -129,14 +142,20 @@ public final class Case {
             }
 
             ChannelSimulator sim = new ChannelSimulator(ctx, directory);
+            boolean publisher = "publisher".equals(p.getProperty("channel", "subscriber").trim().toLowerCase());
+            boolean wantFilter = Boolean.parseBoolean(p.getProperty("filter", "false"));
             if (export != null) {
-                String channel = p.getProperty("channel", "subscriber").trim().toLowerCase();
-                boolean publisher = "publisher".equals(channel);
-                // Optional leading filter stage (drops ignored classes/attrs).
-                if (Boolean.parseBoolean(p.getProperty("filter", "false")) && export.filter() != null) {
+                if (wantFilter && export.filter() != null) {
                     sim.add(PolicyStage.filter("filter", export.filter(), publisher));
                 }
                 sim.addAll(publisher ? export.publisherChain(ctx) : export.subscriberChain(ctx));
+            } else if (project != null) {
+                if (wantFilter && project.filter(projectDriver) != null) {
+                    sim.add(PolicyStage.filter("filter", project.filter(projectDriver), publisher));
+                }
+                sim.addAll(publisher
+                    ? project.publisherChain(projectDriver, ctx)
+                    : project.subscriberChain(projectDriver, ctx));
             } else {
                 for (Stage s : readChain(caseDir)) {
                     sim.add(PolicyStage.fromFile(s.name, caseDir.resolve(s.policyPath), ctx));

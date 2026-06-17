@@ -31,7 +31,7 @@ public final class PolicyLoader {
     static final String XSLT_NS = "http://www.w3.org/1999/XSL/Transform";
 
     /** Recognized policy root local names, in extraction-preference order. */
-    private static final String[] POLICY_ROOTS = {"policy", "style-sheet"};
+    private static final String[] POLICY_ROOTS = {"policy", "style-sheet", "attr-name-map"};
 
     public static Element load(Path file) {
         try {
