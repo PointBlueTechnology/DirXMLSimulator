@@ -65,6 +65,38 @@ export JAVA_HOME=.../zulu-21
 mvn test
 ```
 
+## Install it as a Claude Code skill
+
+This project ships a Claude Code **skill** (`.claude/skills/dirxml-policy-testing/`)
+that teaches an agent to drive the harness — the author → run → step → test loop,
+the case format, and the `bin/sim` commands. That's what turns "test this policy"
+into something an agent does for you (see [docs/intro.md](docs/intro.md)).
+
+**Working in this repo — nothing to install.** Open the DirXMLSimulator project in
+Claude Code and the project skill is active automatically. Ask the agent to test or
+debug a policy and it uses the skill (and `bin/sim`) on your behalf.
+
+**Use it from anywhere — install globally.** To make the skill available in any
+Claude Code session (e.g. while you're in a Designer project), copy or symlink it
+into your user skills directory:
+
+```bash
+# from the repo root — symlink so it tracks updates to the skill
+ln -s "$(pwd)/.claude/skills/dirxml-policy-testing" ~/.claude/skills/dirxml-policy-testing
+# …or copy it
+cp -R .claude/skills/dirxml-policy-testing ~/.claude/skills/
+```
+
+The skill drives the `bin/sim` CLI, so the **built harness must be reachable**:
+keep this repo checked out and built (`mvn compile`, then `bin/sim doctor` → `OK`),
+and either run the agent from inside it or tell the agent where the project lives.
+
+**Using it.** The agent selects the skill automatically from its description when
+you ask about IDM / DirXML policy testing, tracing, or debugging; you can also
+invoke it by name (`dirxml-policy-testing`) in clients that list skills. Hand it a
+driver export and a trace and ask in plain English — see
+[docs/intro.md](docs/intro.md) for example asks.
+
 ## CLI
 
 ```bash

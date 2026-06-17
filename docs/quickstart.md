@@ -25,6 +25,18 @@ DOCTOR: OK
 
 `DOCTOR: OK` means you're ready.
 
+**Using it as a skill.** This project ships a Claude Code skill. Working *in* this
+repo, it's active automatically — just ask the agent to test or debug a policy. To
+use it from any other project, install it globally:
+
+```bash
+ln -s "$(pwd)/.claude/skills/dirxml-policy-testing" ~/.claude/skills/dirxml-policy-testing
+```
+
+(The skill drives `bin/sim`, so keep this built repo reachable.) See the
+[README](../README.md#install-it-as-a-claude-code-skill) for details. The rest of
+this guide is what the agent does for you — and what you can run by hand.
+
 ## 2. Prove it on the bundled sample (no export needed)
 
 A complete sample case ships with the project:
