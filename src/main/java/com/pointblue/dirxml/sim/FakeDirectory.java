@@ -56,6 +56,7 @@ public final class FakeDirectory implements XdsQueryProcessor, XdsCommandProcess
     private final List<String> queryLog = new ArrayList<>();
     private final List<String> commandLog = new ArrayList<>();
     private final Map<String, List<Entry>> pagedResults = new LinkedHashMap<>();
+    private final Map<String, String> namedPasswords = new LinkedHashMap<>();
     private int tokenCounter = 0;
 
     // ---- loading state -------------------------------------------------------
@@ -119,8 +120,28 @@ public final class FakeDirectory implements XdsQueryProcessor, XdsCommandProcess
 
     // ---- query seam ----------------------------------------------------------
 
+    /** Supply a named password value (a secret, kept out of the export — like a GCV). */
+    public FakeDirectory setNamedPassword(String name, String value) {
+        namedPasswords.put(name, value);
+        return this;
+    }
+
+    /** Names of configured named passwords. */
+    public java.util.Set<String> namedPasswordNames() {
+        return namedPasswords.keySet();
+    }
+
     @Override
     public Document query(Document queryDoc) {
+        // get-named-password is a control query (token-named-password) — answer from
+        // the supplied secrets; not a directory search, so it isn't logged as a query.
+        Element gnp = Xds.firstByName(queryDoc.getDocumentElement(), "get-named-password");
+        if (gnp != null) {
+            String val = namedPasswords.get(Xds.text(gnp).trim());
+            String body = val == null ? "" : "<password>" + esc(val) + "</password>";
+            return Xds.parse("<nds dtdversion=\"4.0\"><output>" + body
+                + "<status level=\"success\"/></output></nds>");
+        }
         queryLog.add(Xds.serialize(queryDoc));
         Element q = Xds.firstByName(queryDoc.getDocumentElement(), "query");
         boolean isQueryEx = false;

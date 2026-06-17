@@ -157,6 +157,24 @@ public class ChannelSimulatorTest {
     }
 
     @Test
+    public void suppliedNamedPasswordResolves() {
+        // A named password is a secret value supplied to the case (like a GCV).
+        EngineContext ctx = EngineContext.create("\\T\\sys\\DS\\D");
+        FakeDirectory dir = new FakeDirectory().setNamedPassword("apiKey", "s3cr3t");
+        String policy =
+            "<policy><rule><description>use named password</description><conditions/><actions>" +
+            "<do-set-dest-attr-value name='Key'>" +
+            "<arg-value type='string'><token-named-password name='apiKey'/></arg-value>" +
+            "</do-set-dest-attr-value></actions></rule></policy>";
+        ChannelSimulator.Result r = new ChannelSimulator(ctx, dir)
+            .add(PolicyStage.fromElement("t", PolicyLoader.load(policy), ctx))
+            .run(ADD_INPUT);
+        assertNull(r.stages.get(0).error);
+        assertTrue("supplied named password flows into output: " + r.finalXds,
+            r.finalXds.contains("s3cr3t"));
+    }
+
+    @Test
     public void entitlementTokenResolvesFromOperation() {
         // Entitlements are attribute values on the op (DirXML-EntitlementRef); the
         // engine's token reads them from the operation — no external service.

@@ -18,14 +18,14 @@ import java.util.Set;
  * {@code if-entitlement}, …) and {@code do-implement-entitlement} are op-driven and
  * work whenever the input carries those values — they are deliberately not flagged.
  *
- * <p>What is genuinely missing: <b>named passwords</b> (served by a driver password
- * store the harness doesn't populate) and the <b>User App role/resource actions</b>
- * ({@code do-add-role}, {@code do-create-resource}, …) which call the RBPM role
- * service over SOAP.
+ * <p>Named passwords are supported too — they're secret <i>values</i> (like GCVs)
+ * supplied to the case ({@code namedPassword.<name>=…}); a case-aware check warns
+ * only about names a policy references but that weren't supplied. What remains
+ * genuinely missing is the <b>User App role/resource actions</b> ({@code do-add-role},
+ * {@code do-create-resource}, …), which call the RBPM role service over SOAP.
  */
 public final class UnsupportedFeatures {
 
-    private static final String[] NAMED_PASSWORD = {"token-named-password", "if-named-password"};
     /** RBPM/User App role & resource actions — these call the role service over SOAP. */
     private static final String[] RBPM_ACTIONS = {
         "do-add-role", "do-remove-role", "do-create-resource", "do-modify-resource",
@@ -39,16 +39,32 @@ public final class UnsupportedFeatures {
         Set<String> names = new HashSet<>();
         collect(policy, names);
         List<String> msgs = new ArrayList<>();
-        if (containsAny(names, NAMED_PASSWORD)) {
-            msgs.add("named passwords (token-named-password / if-named-password) — "
-                + "no password store; resolves to empty / condition false");
-        }
         if (containsAny(names, RBPM_ACTIONS)) {
             msgs.add("User App role/resource actions (do-add-role, do-create-resource, …) — "
                 + "these call the RBPM role service over SOAP, which the harness doesn't run; "
                 + "they no-op or error (entitlement *values* are unaffected — those are op-driven)");
         }
         return msgs;
+    }
+
+    /** Named-password names a policy references (token-named-password / if-named-password). */
+    public static List<String> referencedNamedPasswords(Element policy) {
+        Set<String> out = new java.util.LinkedHashSet<>();
+        collectNamedPasswords(policy, out);
+        return new ArrayList<>(out);
+    }
+
+    private static void collectNamedPasswords(Element el, Set<String> out) {
+        String ln = el.getLocalName();
+        if ("token-named-password".equals(ln) || "if-named-password".equals(ln)) {
+            String name = el.getAttribute("name");
+            if (name != null && !name.isEmpty()) {
+                out.add(name);
+            }
+        }
+        for (Element c : Xds.childElements(el)) {
+            collectNamedPasswords(c, out);
+        }
     }
 
     private static boolean containsAny(Set<String> names, String[] watch) {

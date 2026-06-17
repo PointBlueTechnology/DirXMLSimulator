@@ -103,6 +103,13 @@ public final class Case {
             if (Files.exists(dirFile)) {
                 directory.loadStateFile(dirFile);
             }
+            // Named passwords are secret values (kept out of the export); supply them
+            // per case as `namedPassword.<name>=<value>`.
+            for (String key : p.stringPropertyNames()) {
+                if (key.startsWith("namedPassword.")) {
+                    directory.setNamedPassword(key.substring("namedPassword.".length()), p.getProperty(key));
+                }
+            }
 
             ChannelSimulator sim = new ChannelSimulator(ctx, directory);
             if (export != null) {

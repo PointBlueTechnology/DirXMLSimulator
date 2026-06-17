@@ -85,6 +85,22 @@ public final class Cli {
             }
             System.out.println();
         }
+        // Named passwords are supplied per case; warn only for referenced names with no value.
+        java.util.Set<String> configured = c.directory.namedPasswordNames();
+        java.util.List<String> unset = new java.util.ArrayList<>();
+        for (String n : c.sim.referencedNamedPasswords()) {
+            if (!configured.contains(n)) {
+                unset.add(n);
+            }
+        }
+        if (!unset.isEmpty()) {
+            System.out.println("WARNING: named password(s) referenced but not supplied (resolve to empty); "
+                + "set in case.properties as namedPassword.<name>=<value>:");
+            for (String n : unset) {
+                System.out.println("  - " + n);
+            }
+            System.out.println();
+        }
     }
 
     private static int doRun(Path caseDir, boolean wantTrace) {

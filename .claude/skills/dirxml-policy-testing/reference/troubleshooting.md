@@ -47,12 +47,15 @@
   function, missing Java extension class, unresolvable target). The run stops at
   that stage but shows all prior snapshots and the error message; the offending
   action is named in the message.
-- **`WARNING: this policy uses IDM subsystems the harness does not provide`.** Two
-  things are genuinely unsupported and resolve empty / no-op:
-  - **named passwords** (`token-named-password`) — no driver password store; supply
-    the value another way or test the parts that don't depend on it;
-  - **User App role/resource actions** (`do-add-role`, `do-create-resource`, …) —
-    these call the RBPM role service over SOAP, which the harness doesn't run.
+- **Named passwords.** A named password is a secret *value* (like a GCV) kept out
+  of the export. Supply it per case: `namedPassword.<name>=<value>` in
+  `case.properties`; `token-named-password` then resolves to it. A referenced name
+  you don't supply resolves to empty and prints `WARNING: named password(s)
+  referenced but not supplied`.
+- **`WARNING: this policy uses IDM subsystems the harness does not provide`.** Only
+  **User App role/resource actions** (`do-add-role`, `do-create-resource`, …) —
+  these call the RBPM role service over SOAP, which the harness doesn't run, so they
+  no-op or error.
 
   **Entitlements are NOT in this category** — `token-added-entitlement`,
   `if-entitlement`, `do-implement-entitlement`, etc. are *op-driven*: they read the

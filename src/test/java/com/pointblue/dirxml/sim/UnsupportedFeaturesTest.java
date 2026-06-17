@@ -16,15 +16,22 @@ public class UnsupportedFeaturesTest {
     }
 
     @Test
-    public void flagsNamedPasswordAndRbpmActions() {
+    public void flagsRbpmActionsOnly() {
         List<String> w = scan(
-            "<do-set-dest-attr-value name='P'><arg-value type='string'>"
-            + "<token-named-password name='pw'/></arg-value></do-set-dest-attr-value>"
-            + "<do-add-role><arg-dn><token-text>\\r</token-text></arg-dn>"
+            "<do-add-role><arg-dn><token-text>\\r</token-text></arg-dn>"
             + "<arg-dn><token-src-dn/></arg-dn></do-add-role>");
-        assertEquals(2, w.size());
-        assertTrue(w.stream().anyMatch(s -> s.contains("named passwords")));
-        assertTrue(w.stream().anyMatch(s -> s.contains("role/resource")));
+        assertEquals(1, w.size());
+        assertTrue(w.get(0).contains("role/resource"));
+    }
+
+    @Test
+    public void referencedNamedPasswordsDetected() {
+        org.w3c.dom.Element p = PolicyLoader.load(
+            "<policy><rule><description>x</description><conditions/><actions>"
+            + "<do-set-dest-attr-value name='P'><arg-value type='string'>"
+            + "<token-named-password name='apiKey'/></arg-value></do-set-dest-attr-value>"
+            + "</actions></rule></policy>");
+        assertEquals(java.util.List.of("apiKey"), UnsupportedFeatures.referencedNamedPasswords(p));
     }
 
     @Test

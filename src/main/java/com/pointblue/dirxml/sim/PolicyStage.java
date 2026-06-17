@@ -59,6 +59,11 @@ public final class PolicyStage {
         return source == null ? Collections.emptyList() : UnsupportedFeatures.scan(source);
     }
 
+    /** Named-password names this policy references. */
+    public List<String> referencedNamedPasswords() {
+        return source == null ? Collections.emptyList() : UnsupportedFeatures.referencedNamedPasswords(source);
+    }
+
     /**
      * Expand a DirXML Script policy into one single-rule stage per {@code <rule>},
      * for per-rule stepping. Each sub-stage is a real one-rule policy run in order

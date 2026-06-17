@@ -118,12 +118,14 @@ golden once the output looks right with `record`, then `test` guards regressions
 - **Missing Java extension class** — `run`/`step`/`test` print a
   `WARNING: Java extension classes not on the classpath: …` up front; calls to
   them then surface as a stage `[ERROR]` ("function not found").
-- **Unsupported subsystems** — if the policy uses **named passwords** or **User App
-  role/resource actions** (`do-add-role`/`do-create-resource`, RBPM SOAP), a
-  `WARNING: this policy uses IDM subsystems the harness does not provide …` prints
-  up front; those resolve empty / no-op. (**Entitlements are supported** — they're
-  op-driven `DirXML-EntitlementRef` attribute values; just include the entitlement
-  change in the input op. Not warned.)
+- **Named passwords** — supply with `namedPassword.<name>=<value>`; a referenced
+  name with no value prints `WARNING: named password(s) referenced but not supplied`
+  and resolves to empty.
+- **Unsupported subsystems** — only **User App role/resource actions**
+  (`do-add-role`/`do-create-resource`, RBPM SOAP) print `WARNING: this policy uses
+  IDM subsystems the harness does not provide …` and no-op/error. (**Entitlements
+  are supported** — op-driven `DirXML-EntitlementRef` attribute values; include the
+  entitlement change in the input op.)
 
 Operation outcomes to recognize in output: an empty `<input/>` means the operation
 was **vetoed/stripped**; `[no-op]` means the stage's conditions didn't match or its
@@ -144,7 +146,10 @@ cases/<name>/
 ```
 
 `case.properties` keys (all optional): `driverDN`, `dnFormat` (default `slash`),
-`fromNDS` (default `true` = eDir→app / Subscriber-side), `traceLevel` (1–5).
+`fromNDS` (default `true` = eDir→app / Subscriber-side), `traceLevel` (1–5), and
+`namedPassword.<name>=<value>` to supply a named password (a secret value, kept out
+of exports — same idea as a GCV; referenced names you don't supply resolve to empty
+and are warned).
 
 Two ways to define the chain:
 - **Explicit** — `chain.txt`, one stage per line in channel order.
