@@ -85,7 +85,9 @@ For each stage you get:
   ("Rule selected"), each action, token/arg-value resolution, and "Policy
   returned". This is where you see *why* a value came out the way it did.
 
-## Driver exports
+## Driver config: an export or a Designer project
+
+### Driver export
 
 A Designer "Export Driver Configuration" file (`<driver-configuration>`) holds the
 whole driver: policies as `<rule name="…">` wrappers (each with a `<policy>`,
@@ -98,14 +100,40 @@ export=../../UKG.xml
 channel=publisher
 ```
 
-The harness assembles that channel's real chain and loads the driver's GCVs
-(`token-global-variable` resolves from the export). A case-local `gcv.xml` can
-override individual GCVs. Real client exports are proprietary — keep them out of
-git (the repo gitignores `*.xml` outside `cases/`).
+The harness assembles that channel's real chain and loads the driver's GCVs and
+ECMAScript resources. A case-local `gcv.xml` can override individual GCVs. Real
+client exports are proprietary — keep them out of git (the repo gitignores
+`*.xml` outside `cases/`).
 
-You can also point a single stage at one real policy file — a Designer project
-stores each policy as a clean `<policy>` in `Model/.../<id>_contents.xml`, which
-loads directly.
+### Designer project on disk
+
+Instead of exporting, point at the Designer **project** and name the driver:
+
+```
+# case.properties
+project=/path/to/designer_workspace/MyProject
+driver=CyberArk-PROD
+channel=publisher
+```
+
+The harness reads the project's object model — `*.Driver_` (by name),
+`.Subscriber_`/`.Publisher_` `relations` (ordered policy sets), each policy's
+`<ID>_contents.xml` — and assembles the same chain. It also loads the project's
+**GCVs** (`*_DirXML-ConfigValues.xml`), **ECMAScript resources**, and the
+**eDirectory schema** (`*_schema.xml`) — the last of which an export omits and
+which drives input validation (see below). The on-disk format is mapped by the
+companion `dirxml-designer-workspace` skill.
+
+(You can also point a single chain stage at one real policy file directly —
+Designer stores each policy as a clean `<policy>` in `Model/.../<id>_contents.xml`.)
+
+## Schema validation
+
+When a schema is available — automatically with `project=`, or explicitly via
+`schema=<*_schema.xml or project dir>` — the harness validates `input.xds` and
+`directory.xds` against it and warns on: an unknown class, an attribute not in the
+schema (a typo), an attribute not valid for its class, or multiple values on a
+single-valued attribute. This catches mistakes when you hand-author inputs.
 
 ## GCV definitions (`gcv.xml`)
 
