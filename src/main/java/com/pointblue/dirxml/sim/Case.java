@@ -78,6 +78,7 @@ public final class Case {
                     throw new IllegalArgumentException(
                         "project= requires driver=<name>; drivers in project: " + project.driverNames());
                 }
+                gcv = project.gcvDefinitions(projectDriver);
             }
             // A case-local gcv.xml overlays/overrides the export GCVs.
             Path gcvFile = caseDir.resolve("gcv.xml");

@@ -1,5 +1,7 @@
 package com.pointblue.dirxml.sim;
 
+import com.novell.nds.dirxml.engine.gcv.GCDefinitions;
+
 import org.w3c.dom.Element;
 
 import java.nio.file.Files;
@@ -45,6 +47,7 @@ public final class DesignerProject {
     private final Map<String, Path> metaById = new LinkedHashMap<>();
     private final Map<String, DriverRef> driversByName = new LinkedHashMap<>();
     private final List<Path> schemaFiles = new ArrayList<>();
+    private final List<Path> configValueFiles = new ArrayList<>();
 
     private DesignerProject() {}
 
@@ -53,7 +56,9 @@ public final class DesignerProject {
         try (Stream<Path> walk = Files.walk(projectDir)) {
             walk.filter(Files::isRegularFile).forEach(f -> {
                 String fn = f.getFileName().toString();
-                if (fn.endsWith("_schema.xml")) {
+                if (fn.endsWith("_DirXML-ConfigValues.xml")) {
+                    p.configValueFiles.add(f);
+                } else if (fn.endsWith("_schema.xml")) {
                     p.schemaFiles.add(f);
                 } else if (fn.endsWith("_contents.xml")) {
                     p.contentsById.put(fn.substring(0, fn.length() - "_contents.xml".length()), f);
@@ -92,6 +97,33 @@ public final class DesignerProject {
     /** The project's eDirectory schema ({@code *_schema.xml}); empty if none found. */
     public SchemaModel schema() {
         return schemaFiles.isEmpty() ? SchemaModel.empty() : SchemaModel.parseFile(schemaFiles.get(0));
+    }
+
+    /**
+     * GCVs for a driver: the resolved values from the DriverSet- and Driver-scope
+     * {@code *_DirXML-ConfigValues.xml} files (driverset first, driver overrides).
+     */
+    public GCDefinitions gcvDefinitions(String driver) {
+        GCDefinitions merged = new GCDefinitions();
+        DriverRef d = driver(driver);
+        String driverId = d.dir.getFileName().toString();
+        String driverSetId = d.dir.getParent().getFileName().toString();
+        mergeConfigValues(merged, driverSetId + "_");   // DriverSet-scope GCVs (base)
+        mergeConfigValues(merged, driverId + "_");      // Driver-scope GCVs (override)
+        return merged;
+    }
+
+    private void mergeConfigValues(GCDefinitions merged, String prefix) {
+        for (Path f : configValueFiles) {
+            if (f.getFileName().toString().startsWith(prefix)) {
+                try {
+                    // File root is <configuration-values>; construct(Document) finds it.
+                    merged.merge(GCDefinitions.construct(Xds.parseFile(f)));
+                } catch (Throwable t) {
+                    System.err.println("warning: skipping GCV file " + f.getFileName() + ": " + t);
+                }
+            }
+        }
     }
 
     // ---- chain assembly ------------------------------------------------------

@@ -21,3 +21,4 @@ trace samples/
 .DS_Store
 cases/proj-local/
 cases/schemachk/
+cases/proj-gcv/
