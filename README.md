@@ -65,13 +65,14 @@ Grab `dirxml-simulator-<ver>.zip` from the
 it, drop your nine NetIQ jars into its `lib/`, and run — no clone, no Maven:
 
 ```bash
-unzip dirxml-simulator-1.0.0.zip && cd dirxml-simulator-1.0.0
+unzip dirxml-simulator-*.zip && cd dirxml-simulator-*
 cp /path/to/idm/*.jar lib/      # the 9 jars listed under Requirements
-bin/sim doctor                  # -> DOCTOR: OK
+bin/sim doctor                  # -> DOCTOR: OK   (Windows: bin\sim.cmd doctor)
 ```
 
-The archive bundles the compiled jar, `bin/sim`, the skill, sample cases, and
-docs. The proprietary jars are never bundled — you supply them.
+The archive bundles the compiled jar, the launchers (`bin/sim` for macOS/Linux,
+`bin/sim.cmd` for Windows), the skill, sample cases, and docs. The proprietary
+jars are never bundled — you supply them.
 
 ## Build from source & test
 

@@ -79,6 +79,15 @@ public final class ChannelSimulator {
         return new ArrayList<>(all);
     }
 
+    /** Distinct unsupported-subsystem warnings across all stages. */
+    public List<String> unsupportedFeatures() {
+        java.util.LinkedHashSet<String> all = new java.util.LinkedHashSet<>();
+        for (PolicyStage s : stages) {
+            all.addAll(s.unsupportedFeatures());
+        }
+        return new ArrayList<>(all);
+    }
+
     /** Run the input operation through all stages, capturing per-stage snapshots. */
     public Result run(Document input) {
         return run(input, false);

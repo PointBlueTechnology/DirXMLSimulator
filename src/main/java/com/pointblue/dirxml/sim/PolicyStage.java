@@ -54,6 +54,11 @@ public final class PolicyStage {
         return source == null ? Collections.emptyList() : JavaExtensions.missingClasses(source);
     }
 
+    /** Warnings for IDM subsystems this policy uses that the harness doesn't provide. */
+    public List<String> unsupportedFeatures() {
+        return source == null ? Collections.emptyList() : UnsupportedFeatures.scan(source);
+    }
+
     /**
      * Expand a DirXML Script policy into one single-rule stage per {@code <rule>},
      * for per-rule stepping. Each sub-stage is a real one-rule policy run in order

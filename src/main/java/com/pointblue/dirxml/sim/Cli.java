@@ -65,8 +65,8 @@ public final class Cli {
         }
     }
 
-    /** Warn clearly about Java extension classes a policy needs but that aren't on the classpath. */
-    private static void warnMissingJavaClasses(Case c) {
+    /** Up-front diagnostics: missing Java extension classes and unsupported subsystems. */
+    private static void warnDiagnostics(Case c) {
         java.util.List<String> missing = c.sim.missingJavaClasses();
         if (!missing.isEmpty()) {
             System.out.println("WARNING: Java extension classes not on the classpath (calls to them "
@@ -76,11 +76,20 @@ public final class Cli {
             }
             System.out.println();
         }
+        java.util.List<String> unsupported = c.sim.unsupportedFeatures();
+        if (!unsupported.isEmpty()) {
+            System.out.println("WARNING: this policy uses IDM subsystems the harness does not provide — "
+                + "results involving them are not authoritative:");
+            for (String u : unsupported) {
+                System.out.println("  - " + u);
+            }
+            System.out.println();
+        }
     }
 
     private static int doRun(Path caseDir, boolean wantTrace) {
         Case c = Case.load(caseDir);
-        warnMissingJavaClasses(c);
+        warnDiagnostics(c);
         ChannelSimulator.Result r = c.run();
         System.out.println("# stages: " + r.stages.size());
         for (StageSnapshot s : r.stages) {
@@ -99,7 +108,7 @@ public final class Cli {
 
     private static int doStep(Path caseDir, boolean perRule) {
         Case c = Case.load(caseDir);
-        warnMissingJavaClasses(c);
+        warnDiagnostics(c);
         ChannelSimulator.Result r = c.sim.run(c.input, perRule);
         for (StageSnapshot s : r.stages) {
             System.out.println("============================================================");
@@ -132,7 +141,7 @@ public final class Cli {
 
     private static int doTest(Path caseDir) {
         Case c = Case.load(caseDir);
-        warnMissingJavaClasses(c);
+        warnDiagnostics(c);
         ChannelSimulator.Result r = c.run();
         boolean ok = true;
 

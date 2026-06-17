@@ -22,7 +22,7 @@ rm -rf "$DIST"
 mkdir -p "$DIST/bin" "$DIST/lib" "$DIST/cases"
 
 cp "$JAR" "$DIST/"
-cp bin/sim "$DIST/bin/"
+cp bin/sim bin/sim.cmd "$DIST/bin/"
 cp lib/README.md "$DIST/lib/"
 cp -R .claude "$DIST/"
 cp -R docs "$DIST/"

@@ -47,6 +47,13 @@
   function, missing Java extension class, unresolvable target). The run stops at
   that stage but shows all prior snapshots and the error message; the offending
   action is named in the message.
+- **`WARNING: this policy uses IDM subsystems the harness does not provide`.** The
+  policy uses **named passwords**, **entitlements**, or **roles/resources (RBPM)**.
+  The harness doesn't stand these up: named-password / entitlement tokens resolve
+  to empty and the conditions to false; role/resource actions no-op or error. Any
+  result that depends on them is **not authoritative** — don't trust output driven
+  by those values. (Stub a value with a different token, or test the parts of the
+  policy that don't depend on them.)
 - **A queried value is missing/wrong.** In `step`, read the stage's QUERIES: did
   the policy ask for that attribute, with what `<search-attr>`/scope? Then check
   `directory.xds` actually contains a matching `<instance>` with that attr.

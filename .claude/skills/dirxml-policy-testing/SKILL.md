@@ -38,7 +38,8 @@ reports problems:
 
 > **Where to run:** `bin/sim` lives in the harness/project directory. Run commands
 > from there, or invoke it by full path (e.g. `/path/to/DirXMLSimulator/bin/sim`)
-> from another working directory. `caseDir` paths are relative to your cwd.
+> from another working directory. `caseDir` paths are relative to your cwd. On
+> **Windows** use `bin\sim.cmd` with the same arguments.
 
 ## Where inputs come from
 
@@ -117,6 +118,10 @@ golden once the output looks right with `record`, then `test` guards regressions
 - **Missing Java extension class** — `run`/`step`/`test` print a
   `WARNING: Java extension classes not on the classpath: …` up front; calls to
   them then surface as a stage `[ERROR]` ("function not found").
+- **Unsupported subsystems** — if the policy uses named passwords, entitlements,
+  or roles/resources, a `WARNING: this policy uses IDM subsystems the harness does
+  not provide …` prints up front. Those tokens resolve empty / conditions false
+  and role actions no-op, so **results that depend on them aren't authoritative**.
 
 Operation outcomes to recognize in output: an empty `<input/>` means the operation
 was **vetoed/stripped**; `[no-op]` means the stage's conditions didn't match or its
