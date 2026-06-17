@@ -97,6 +97,31 @@ invoke it by name (`dirxml-policy-testing`) in clients that list skills. Hand it
 driver export and a trace and ask in plain English — see
 [docs/intro.md](docs/intro.md) for example asks.
 
+### Other agents (Codex, Cursor, Copilot, etc.)
+
+The skill is just markdown plus a CLI, so any coding agent can drive the harness.
+The substance — how to run it, the case format, trace reading — is in
+[AGENTS.md](AGENTS.md) (the cross-agent standard many tools read automatically)
+and the skill's `SKILL.md` + `reference/` files. Wire it into your tool of choice:
+
+- **OpenAI Codex / Jules / Factory / Cursor (agent mode)** — read `AGENTS.md`
+  automatically; no setup needed once the repo is open.
+- **Cursor (rules)** — add a rule that points at the harness:
+  ```bash
+  mkdir -p .cursor/rules
+  printf -- '---\ndescription: Test/debug IDM (DirXML) policies with bin/sim\nalwaysApply: false\n---\nSee AGENTS.md and .claude/skills/dirxml-policy-testing/SKILL.md. Drive the harness via bin/sim.\n' > .cursor/rules/dirxml-policy-testing.mdc
+  ```
+- **GitHub Copilot** — point its repo instructions at the guide:
+  ```bash
+  mkdir -p .github
+  echo 'For IDM / DirXML policy testing, use the harness via bin/sim — see AGENTS.md and .claude/skills/dirxml-policy-testing/SKILL.md.' >> .github/copilot-instructions.md
+  ```
+- **Any other agent** — tell it to read `AGENTS.md` (and the skill's `SKILL.md` /
+  `reference/`) and drive the `bin/sim` CLI.
+
+In every case the agent still needs the **built harness reachable** (JDK 21,
+`lib/` jars, `bin/sim doctor` → `OK`), exactly as above.
+
 ## CLI
 
 ```bash
