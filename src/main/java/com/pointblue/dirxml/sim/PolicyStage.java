@@ -54,14 +54,14 @@ public final class PolicyStage {
         return source == null ? Collections.emptyList() : JavaExtensions.missingClasses(source);
     }
 
-    /** Warnings for IDM subsystems this policy uses that the harness doesn't provide. */
-    public List<String> unsupportedFeatures() {
-        return source == null ? Collections.emptyList() : UnsupportedFeatures.scan(source);
-    }
-
     /** Named-password names this policy references. */
     public List<String> referencedNamedPasswords() {
         return source == null ? Collections.emptyList() : UnsupportedFeatures.referencedNamedPasswords(source);
+    }
+
+    /** External (REST/email/RBPM/…) actions this policy uses — faked when faking is on. */
+    public List<String> externalActions() {
+        return source == null ? Collections.emptyList() : FakeActions.externalActions(source);
     }
 
     /**
@@ -123,7 +123,14 @@ public final class PolicyStage {
             }
             switch (root) {
                 case "policy":
-                    proc = new DirXMLScriptProcessor(policy, ctx.staticContext());
+                    // Fake external actions (REST/email/RBPM/…) on a copy so they
+                    // never connect out; the original `policy` stays the source.
+                    Element forProc = policy;
+                    if (ctx.fakeConfig().enabled && !FakeActions.externalActions(policy).isEmpty()) {
+                        forProc = Xds.parse(Xds.serializeElement(policy)).getDocumentElement();
+                        FakeActions.rewrite(forProc, ctx.fakeConfig());
+                    }
+                    proc = new DirXMLScriptProcessor(forProc, ctx.staticContext());
                     break;
                 case "style-sheet":
                     proc = new XSLTRuleProcessor(policy, ctx.staticContext());

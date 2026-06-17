@@ -82,6 +82,23 @@ public final class Case {
             EngineContext ctx = EngineContext.create(driverDN, dnFormat, fromNDS, gcv);
             ctx.setTraceLevel(traceLevel);
 
+            // Faking of external actions (REST/email/RBPM/…). On by default.
+            FakeActions.Config fake = new FakeActions.Config();
+            fake.enabled = Boolean.parseBoolean(p.getProperty("fakeActions", "true"));
+            if (p.getProperty("restResponse") != null) {
+                fake.defaultRestResponse = p.getProperty("restResponse");
+            }
+            Path restFile = caseDir.resolve("rest-response.json");
+            if (fake.defaultRestResponse == null && Files.exists(restFile)) {
+                fake.defaultRestResponse = new String(Files.readAllBytes(restFile), "UTF-8");
+            }
+            for (String key : p.stringPropertyNames()) {
+                if (key.startsWith("restResponse.")) {
+                    fake.restResponsesByUrl.put(key.substring("restResponse.".length()), p.getProperty(key));
+                }
+            }
+            ctx.setFakeConfig(fake);
+
             // ECMAScript (es:) functions: from the export's resources and/or a
             // case-local ecmascript/*.js directory.
             List<String> ecma = new ArrayList<>();

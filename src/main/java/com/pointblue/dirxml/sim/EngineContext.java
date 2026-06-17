@@ -27,10 +27,20 @@ public final class EngineContext {
 
     private final RuleStaticContext staticCtx;
     private final CaptureEngineTrace tracer;
+    private FakeActions.Config fakeConfig = new FakeActions.Config();
 
     private EngineContext(RuleStaticContext staticCtx, CaptureEngineTrace tracer) {
         this.staticCtx = staticCtx;
         this.tracer = tracer;
+    }
+
+    /** Faking config for external actions (REST/email/RBPM/…). Enabled by default. */
+    public FakeActions.Config fakeConfig() {
+        return fakeConfig;
+    }
+
+    public void setFakeConfig(FakeActions.Config cfg) {
+        this.fakeConfig = cfg;
     }
 
     /** Default context: slash DN format, fromNDS=true, empty GCVs, null Driver. */

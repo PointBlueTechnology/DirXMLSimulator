@@ -52,12 +52,19 @@
   `case.properties`; `token-named-password` then resolves to it. A referenced name
   you don't supply resolves to empty and prints `WARNING: named password(s)
   referenced but not supplied`.
-- **`WARNING: this policy uses IDM subsystems the harness does not provide`.** Only
-  **User App role/resource actions** (`do-add-role`, `do-create-resource`, …) —
-  these call the RBPM role service over SOAP, which the harness doesn't run, so they
-  no-op or error.
+- **External actions (REST / email / RBPM / workflow) are faked.** Actions that
+  would connect out — `do-invoke-rest-endpoint`, `do-send-email[-from-template]`,
+  `do-add-role`/`do-create-resource`/… (RBPM SOAP), `do-start-workflow`,
+  `do-generate-xdas-event`, the SSO-credential actions — are rewritten to safe
+  stand-ins (faking is on by default). They make no live call (so the run can't
+  hang), are logged as `FAKED: <action> …` in the trace, and the policy continues.
+  For `do-invoke-rest-endpoint`, supply the response a downstream rule needs via
+  `restResponse=<body>` (or `restResponse.<urlSubstring>=<body>`, or a
+  `rest-response.json` file) — it's injected into the `success.do-invoke-rest-endpoint`
+  local variable. `fakeActions=false` turns faking off (the actions then attempt the
+  real call and fail or hang).
 
-  **Entitlements are NOT in this category** — `token-added-entitlement`,
+  **Entitlements are NOT external** — `token-added-entitlement`,
   `if-entitlement`, `do-implement-entitlement`, etc. are *op-driven*: they read the
   `DirXML-EntitlementRef` values on the operation. They work fine as long as your
   **input op carries the entitlement change** (trace-mined inputs do). If an

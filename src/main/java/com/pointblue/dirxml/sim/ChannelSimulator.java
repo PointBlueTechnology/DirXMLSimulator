@@ -79,20 +79,20 @@ public final class ChannelSimulator {
         return new ArrayList<>(all);
     }
 
-    /** Distinct unsupported-subsystem warnings across all stages. */
-    public List<String> unsupportedFeatures() {
-        java.util.LinkedHashSet<String> all = new java.util.LinkedHashSet<>();
-        for (PolicyStage s : stages) {
-            all.addAll(s.unsupportedFeatures());
-        }
-        return new ArrayList<>(all);
-    }
-
     /** Distinct named-password names referenced by any stage. */
     public List<String> referencedNamedPasswords() {
         java.util.LinkedHashSet<String> all = new java.util.LinkedHashSet<>();
         for (PolicyStage s : stages) {
             all.addAll(s.referencedNamedPasswords());
+        }
+        return new ArrayList<>(all);
+    }
+
+    /** Distinct external actions across all stages (faked when faking is enabled). */
+    public List<String> externalActions() {
+        java.util.LinkedHashSet<String> all = new java.util.LinkedHashSet<>();
+        for (PolicyStage s : stages) {
+            all.addAll(s.externalActions());
         }
         return new ArrayList<>(all);
     }

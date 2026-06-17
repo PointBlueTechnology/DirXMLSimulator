@@ -121,10 +121,15 @@ golden once the output looks right with `record`, then `test` guards regressions
 - **Named passwords** — supply with `namedPassword.<name>=<value>`; a referenced
   name with no value prints `WARNING: named password(s) referenced but not supplied`
   and resolves to empty.
-- **Unsupported subsystems** — only **User App role/resource actions**
-  (`do-add-role`/`do-create-resource`, RBPM SOAP) print `WARNING: this policy uses
-  IDM subsystems the harness does not provide …` and no-op/error. (**Entitlements
-  are supported** — op-driven `DirXML-EntitlementRef` attribute values; include the
+- **Faked external actions** — actions that would make a live call (REST, email,
+  RBPM role/resource SOAP, workflow, XDAS, SSO) are **faked by default**: no
+  connection, recorded as `FAKED: <action> …` in the trace, and the policy
+  continues. A `note: external actions are faked …` prints up front. For
+  `do-invoke-rest-endpoint`, supply a canned body (`restResponse=…` /
+  `restResponse.<urlSubstring>=…` / `rest-response.json`) and it's injected into
+  `success.do-invoke-rest-endpoint` so downstream rules work. Set `fakeActions=false`
+  to disable (then those actions attempt the real call and fail/hang). (**Entitlements
+  are not external** — op-driven `DirXML-EntitlementRef` values; include the
   entitlement change in the input op.)
 
 Operation outcomes to recognize in output: an empty `<input/>` means the operation
@@ -141,15 +146,18 @@ cases/<name>/
   directory.xds          # optional: initial fake-directory state (<instance> set)
   gcv.xml                # optional: GCV definitions (overrides export GCVs)
   ecmascript/            # optional: *.js defining es: functions the policies call
+  rest-response.json     # optional: canned body for a faked do-invoke-rest-endpoint
   expected-output.xds    # golden (written by `record`)
   expected-directory.xds # optional golden: directory end-state
 ```
 
 `case.properties` keys (all optional): `driverDN`, `dnFormat` (default `slash`),
-`fromNDS` (default `true` = eDir→app / Subscriber-side), `traceLevel` (1–5), and
+`fromNDS` (default `true` = eDir→app / Subscriber-side), `traceLevel` (1–5);
 `namedPassword.<name>=<value>` to supply a named password (a secret value, kept out
 of exports — same idea as a GCV; referenced names you don't supply resolve to empty
-and are warned).
+and are warned); `fakeActions` (default `true`); and `restResponse=<body>` (or
+`restResponse.<urlSubstring>=<body>`, or a `rest-response.json` file) to supply the
+canned body a faked `do-invoke-rest-endpoint` returns.
 
 Two ways to define the chain:
 - **Explicit** — `chain.txt`, one stage per line in channel order.

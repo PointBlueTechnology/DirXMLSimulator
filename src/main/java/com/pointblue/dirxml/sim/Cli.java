@@ -76,12 +76,15 @@ public final class Cli {
             }
             System.out.println();
         }
-        java.util.List<String> unsupported = c.sim.unsupportedFeatures();
-        if (!unsupported.isEmpty()) {
-            System.out.println("WARNING: this policy uses IDM subsystems the harness does not provide — "
-                + "results involving them are not authoritative:");
-            for (String u : unsupported) {
-                System.out.println("  - " + u);
+        java.util.List<String> external = c.sim.externalActions();
+        if (!external.isEmpty()) {
+            if (c.ctx.fakeConfig().enabled) {
+                System.out.println("note: external actions are faked (recorded as 'FAKED: …' in the "
+                    + "trace, no live call; do-invoke-rest-endpoint uses canned responses if supplied): "
+                    + String.join(", ", external));
+            } else {
+                System.out.println("WARNING: faking is off — these actions make live external calls and "
+                    + "will fail or hang (set fakeActions=true): " + String.join(", ", external));
             }
             System.out.println();
         }
