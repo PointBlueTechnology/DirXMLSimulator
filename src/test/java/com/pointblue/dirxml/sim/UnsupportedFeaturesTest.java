@@ -16,15 +16,23 @@ public class UnsupportedFeaturesTest {
     }
 
     @Test
-    public void flagsNamedPasswordAndEntitlements() {
+    public void flagsNamedPasswordAndRbpmActions() {
         List<String> w = scan(
             "<do-set-dest-attr-value name='P'><arg-value type='string'>"
             + "<token-named-password name='pw'/></arg-value></do-set-dest-attr-value>"
-            + "<do-set-dest-attr-value name='E'><arg-value type='string'>"
-            + "<token-added-entitlement name='grp'/></arg-value></do-set-dest-attr-value>");
+            + "<do-add-role><arg-dn><token-text>\\r</token-text></arg-dn>"
+            + "<arg-dn><token-src-dn/></arg-dn></do-add-role>");
         assertEquals(2, w.size());
         assertTrue(w.stream().anyMatch(s -> s.contains("named passwords")));
-        assertTrue(w.stream().anyMatch(s -> s.contains("entitlements")));
+        assertTrue(w.stream().anyMatch(s -> s.contains("role/resource")));
+    }
+
+    @Test
+    public void entitlementTokensAreNotFlagged() {
+        // Entitlements are op-driven attribute values — supported, never warned.
+        assertTrue(scan(
+            "<do-set-dest-attr-value name='E'><arg-value type='string'>"
+            + "<token-added-entitlement name='grp'/></arg-value></do-set-dest-attr-value>").isEmpty());
     }
 
     @Test

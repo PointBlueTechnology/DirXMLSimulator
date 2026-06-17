@@ -157,6 +157,32 @@ public class ChannelSimulatorTest {
     }
 
     @Test
+    public void entitlementTokenResolvesFromOperation() {
+        // Entitlements are attribute values on the op (DirXML-EntitlementRef); the
+        // engine's token reads them from the operation — no external service.
+        EngineContext ctx = EngineContext.create("\\ACME\\sys\\DS\\Drv");
+        String policy =
+            "<policy><rule><description>read added entitlement</description><conditions/><actions>" +
+            "<do-set-dest-attr-value name='Granted'>" +
+            "<arg-value type='string'><token-added-entitlement name='Group'/></arg-value>" +
+            "</do-set-dest-attr-value></actions></rule></policy>";
+        String input =
+            "<nds dtdversion='4.0'><input>" +
+            "<modify class-name='User' src-dn='\\ACME\\users\\jdoe'><association>a1</association>" +
+            "<modify-attr attr-name='DirXML-EntitlementRef'><add-value><value type='structured'>" +
+            "<component name='nameSpace'>1</component>" +
+            "<component name='volume'>\\ACME\\sys\\DS\\Drv\\Group</component>" +
+            "<component name='path.xml'><ref><src>UA</src><id/><param>cn=admins,o=data</param></ref></component>" +
+            "</value></add-value></modify-attr></modify></input></nds>";
+        ChannelSimulator.Result r = new ChannelSimulator(ctx, new FakeDirectory())
+            .add(PolicyStage.fromElement("t", PolicyLoader.load(policy), ctx))
+            .run(input);
+        assertNull(r.stages.get(0).error);
+        assertTrue("added entitlement value flows into output: " + r.finalXds,
+            r.finalXds.contains("cn=admins,o=data"));
+    }
+
+    @Test
     public void policyQueriesFakeDirectory() {
         // Directory holds jdoe with a Surname the policy will copy via a query.
         FakeDirectory dir = new FakeDirectory().loadState(Xds.parse(

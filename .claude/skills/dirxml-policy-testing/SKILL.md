@@ -118,10 +118,12 @@ golden once the output looks right with `record`, then `test` guards regressions
 - **Missing Java extension class** — `run`/`step`/`test` print a
   `WARNING: Java extension classes not on the classpath: …` up front; calls to
   them then surface as a stage `[ERROR]` ("function not found").
-- **Unsupported subsystems** — if the policy uses named passwords, entitlements,
-  or roles/resources, a `WARNING: this policy uses IDM subsystems the harness does
-  not provide …` prints up front. Those tokens resolve empty / conditions false
-  and role actions no-op, so **results that depend on them aren't authoritative**.
+- **Unsupported subsystems** — if the policy uses **named passwords** or **User App
+  role/resource actions** (`do-add-role`/`do-create-resource`, RBPM SOAP), a
+  `WARNING: this policy uses IDM subsystems the harness does not provide …` prints
+  up front; those resolve empty / no-op. (**Entitlements are supported** — they're
+  op-driven `DirXML-EntitlementRef` attribute values; just include the entitlement
+  change in the input op. Not warned.)
 
 Operation outcomes to recognize in output: an empty `<input/>` means the operation
 was **vetoed/stripped**; `[no-op]` means the stage's conditions didn't match or its

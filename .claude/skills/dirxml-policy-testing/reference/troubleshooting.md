@@ -47,13 +47,19 @@
   function, missing Java extension class, unresolvable target). The run stops at
   that stage but shows all prior snapshots and the error message; the offending
   action is named in the message.
-- **`WARNING: this policy uses IDM subsystems the harness does not provide`.** The
-  policy uses **named passwords**, **entitlements**, or **roles/resources (RBPM)**.
-  The harness doesn't stand these up: named-password / entitlement tokens resolve
-  to empty and the conditions to false; role/resource actions no-op or error. Any
-  result that depends on them is **not authoritative** — don't trust output driven
-  by those values. (Stub a value with a different token, or test the parts of the
-  policy that don't depend on them.)
+- **`WARNING: this policy uses IDM subsystems the harness does not provide`.** Two
+  things are genuinely unsupported and resolve empty / no-op:
+  - **named passwords** (`token-named-password`) — no driver password store; supply
+    the value another way or test the parts that don't depend on it;
+  - **User App role/resource actions** (`do-add-role`, `do-create-resource`, …) —
+    these call the RBPM role service over SOAP, which the harness doesn't run.
+
+  **Entitlements are NOT in this category** — `token-added-entitlement`,
+  `if-entitlement`, `do-implement-entitlement`, etc. are *op-driven*: they read the
+  `DirXML-EntitlementRef` values on the operation. They work fine as long as your
+  **input op carries the entitlement change** (trace-mined inputs do). If an
+  entitlement token comes back empty, the input is missing the
+  `DirXML-EntitlementRef` add/remove-value — not a harness limitation.
 - **A queried value is missing/wrong.** In `step`, read the stage's QUERIES: did
   the policy ask for that attribute, with what `<search-attr>`/scope? Then check
   `directory.xds` actually contains a matching `<instance>` with that attr.

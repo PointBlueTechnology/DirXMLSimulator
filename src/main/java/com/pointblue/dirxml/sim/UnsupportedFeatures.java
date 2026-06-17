@@ -10,21 +10,26 @@ import java.util.Set;
 
 /**
  * Detects policy constructs that depend on IDM subsystems the harness does not
- * stand up — named passwords, entitlements, and roles/resources (RBPM). These do
- * not error; tokens/conditions resolve to empty/false and role/resource actions
- * no-op (or fail), which can silently mislead. The CLI warns up front when a
- * policy uses them so the result isn't misread.
+ * stand up, so the CLI can warn before a result is misread.
+ *
+ * <p>Note what is <b>not</b> here: entitlements and resource/role <i>membership</i>
+ * are ordinary attribute values on the operation ({@code DirXML-EntitlementRef}).
+ * The entitlement tokens/conditions ({@code token-added-entitlement},
+ * {@code if-entitlement}, …) and {@code do-implement-entitlement} are op-driven and
+ * work whenever the input carries those values — they are deliberately not flagged.
+ *
+ * <p>What is genuinely missing: <b>named passwords</b> (served by a driver password
+ * store the harness doesn't populate) and the <b>User App role/resource actions</b>
+ * ({@code do-add-role}, {@code do-create-resource}, …) which call the RBPM role
+ * service over SOAP.
  */
 public final class UnsupportedFeatures {
 
     private static final String[] NAMED_PASSWORD = {"token-named-password", "if-named-password"};
-    private static final String[] ENTITLEMENTS = {
-        "token-added-entitlement", "token-removed-entitlement", "token-entitlement",
-        "token-op-entitlement", "if-entitlement", "if-op-entitlement"
-    };
-    private static final String[] ROLES_RESOURCES = {
+    /** RBPM/User App role & resource actions — these call the role service over SOAP. */
+    private static final String[] RBPM_ACTIONS = {
         "do-add-role", "do-remove-role", "do-create-resource", "do-modify-resource",
-        "do-delete-resource", "do-implement-entitlement", "do-revoke-entitlement"
+        "do-delete-resource"
     };
 
     private UnsupportedFeatures() {}
@@ -38,13 +43,10 @@ public final class UnsupportedFeatures {
             msgs.add("named passwords (token-named-password / if-named-password) — "
                 + "no password store; resolves to empty / condition false");
         }
-        if (containsAny(names, ENTITLEMENTS)) {
-            msgs.add("entitlements (token-*-entitlement / if-entitlement) — "
-                + "no entitlement context; resolve to empty / conditions false");
-        }
-        if (containsAny(names, ROLES_RESOURCES)) {
-            msgs.add("roles/resources (do-add-role, do-create-resource, …) — "
-                + "RBPM/entitlement service not wired; these no-op or error");
+        if (containsAny(names, RBPM_ACTIONS)) {
+            msgs.add("User App role/resource actions (do-add-role, do-create-resource, …) — "
+                + "these call the RBPM role service over SOAP, which the harness doesn't run; "
+                + "they no-op or error (entitlement *values* are unaffected — those are op-driven)");
         }
         return msgs;
     }
