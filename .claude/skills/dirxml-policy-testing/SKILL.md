@@ -186,9 +186,10 @@ Three ways to define the chain:
   ```
   The harness walks the project (`.Driver_`/`.Subscriber_`/`.Publisher_`
   `relations`), resolves each policy's `_contents.xml`, and assembles the chain in
-  channel order — no export needed. It loads the project's ECMAScript resources
-  too. (A project also carries the **schema**, which an export omits.) The on-disk
-  Designer format is mapped by the companion `dirxml-designer-workspace` skill.
+  channel order — no export needed. It also loads the project's **GCVs**
+  (`*_DirXML-ConfigValues.xml`), **ECMAScript resources**, and **schema** (which an
+  export omits). The on-disk Designer format is mapped by the companion
+  `dirxml-designer-workspace` skill.
 
 With `filter=true` (export or project) a leading filter stage drops the
 classes/attributes the driver filter ignores on that channel (off by default).

@@ -47,4 +47,22 @@ public class DesignerProjectTest {
         assertEquals("subscriber-event:P1", r.stages.get(0).stageName);
         assertTrue("policy ran from the project: " + r.finalXds, r.finalXds.contains("Stamped"));
     }
+
+    @Test
+    public void loadsGcvsFromProject() throws Exception {
+        Path proj = Files.createTempDirectory("dxgcv");
+        Path edir = proj.resolve("Model/EdirOrphan");
+        write(edir.resolve("DSID/DRV.Driver_"), String.format(COBJECT, "Drv", "Driver", ""));
+        // DriverSet-scope config values: <DriverSetID>_<ServerID>_DirXML-ConfigValues.xml in EdirOrphan.
+        write(edir.resolve("DSID_S1_DirXML-ConfigValues.xml"),
+            "<configuration-values><definitions>"
+            + "<definition name='test.gcv' display-name='T' type='string'><value>hello-gcv</value></definition>"
+            + "</definitions></configuration-values>");
+
+        DesignerProject p = DesignerProject.load(proj);
+        com.novell.nds.dirxml.engine.gcv.GCDefinitions g = p.gcvDefinitions("Drv");
+        com.novell.nds.dirxml.engine.gcv.GCValue v = g.getValue("test.gcv");
+        assertNotNull("GCV resolved from project", v);
+        assertEquals("hello-gcv", v.getValue());
+    }
 }
