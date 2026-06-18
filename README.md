@@ -37,6 +37,10 @@ policy, and re-run in a loop.
 - **Optional production-fidelity checks** — hand the chain's final command to the
   **real driver shim** to confirm it consumes the policy output, and/or answer
   queries from **live eDirectory over LDAP**. Both opt-in; off by default.
+- **Real input events from a driver's cache** — with a live connection,
+  `bin/sim dxcache` reads a **stopped** driver's event cache (its queued subscriber
+  transactions) straight into a case, as an alternative to mining a trace. Uses
+  DxCMD's LDAP extended ops; needs the optional `lib/ldap.jar`.
 - **Golden tests** — compare final output (and directory end-state) against
   recorded goldens; non-zero exit on mismatch.
 
@@ -64,6 +68,11 @@ policy, and re-run in a loop.
   live in the engine/Remote-Loader classpath (e.g. an `.../lib` directory); copying
   a driver's full dependency set is the easy way to get them all. Run
   `bin/sim doctor` to confirm the set is complete.
+
+  **Optional 10th jar** — `ldap.jar` (Novell/OpenText JLDAP SDK, `com.novell.ldap`;
+  ships with IDM and Designer) is needed only for the **DxCMD** features
+  (`bin/sim dxcache`, reading a driver's event cache). Everything else runs without
+  it.
 
 ## Install from a release (no build)
 

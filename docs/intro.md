@@ -115,6 +115,15 @@ extracts from it:
 A single per-transaction trace is the easiest starting point; a full driver log
 works too (the agent picks the first event and merges the directory data).
 
+### Or: a stopped driver's event cache (no trace needed)
+
+If you have a live connection, the agent can read a **stopped** driver's **event
+cache** — the real subscriber-channel transactions queued up waiting for it — and
+turn them straight into test inputs. No trace capture, no hand-authoring: point it
+at the driver and it pulls the actual pending events (the engine's own queued
+add/modify/delete operations). (Requires the optional Novell LDAP jar; running
+drivers are detected and reported — stop the driver first.)
+
 > Driver exports, Designer projects, LDIF dumps, and traces are configuration and
 > operational data from your environment — treat them like any other sensitive
 > artifact. The tooling keeps them out of source control by default.

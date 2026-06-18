@@ -4,6 +4,12 @@ A DirXML / DSTrace log is the richest source of both **realistic inputs** and
 **debugging signal**. Use it two ways: mine it to bootstrap a case, and read it
 to understand what the engine did.
 
+> **No trace available?** With a live connection you can pull a **stopped**
+> driver's **event cache** (its queued subscriber transactions) directly into a
+> case with `bin/sim dxcache <caseDir>` — the live equivalent of mining a trace for
+> the input event, without capturing one. See the "Real subscriber events without a
+> trace" note in `SKILL.md`.
+
 ## Trace format
 
 Each line is `[MM/dd/yy HH:mm:ss.SSS]:<driver> <channel>:<message>`, e.g.:
