@@ -54,12 +54,16 @@ miniature.
 
 ### a. Get the artifacts
 
-- **Driver config** — either a **driver export** (`.xml` from Designer →
-  *Export to Configuration File*) **or** a **Designer project** on disk (your
-  `designer_workspace` project + the driver name). A project also carries the
-  schema, so inputs get validated.
-- **Trace** — a DSTrace / driver trace log from your environment (turn the driver
-  trace level up, reproduce the event, save the log).
+- **Driver config** — any one of:
+  - an **LDIF/LDAP export of the live vault** (easiest — one dump carries the
+    policy chain, GCVs, filter, and shim params for the *whole driver set*, and
+    can seed the directory too; see [3c](#c-point-the-case-at-the-driver-config)),
+  - a **driver export** (`.xml` from Designer → *Export to Configuration File*),
+  - a **Designer project** on disk (your `designer_workspace` project + driver
+    name) — also carries the schema, so inputs get validated.
+- **Directory data + an input event** — a DSTrace / driver trace log from your
+  environment (turn trace up, reproduce the event, save the log) **or** an LDIF
+  dump of the relevant objects.
 
 ### b. Bootstrap a case from the trace
 
@@ -82,15 +86,24 @@ This creates `cases/my-test/` with:
 
 ### c. Point the case at the driver config
 
-Edit `cases/my-test/case.properties`. Use **either** an export:
+Edit `cases/my-test/case.properties`. Use an **LDIF vault export** + driver name:
 
 ```properties
-export=/path/to/driver.xml
+ldifConfig=/path/to/IDM_subtree.ldif
+driver=CyberArk
 channel=publisher        # or subscriber (the extract step inferred one)
 driverDN=\TREE\system\driverset\MyDriver
 ```
 
-**or** a Designer project + driver name:
+**or** a **driver export**:
+
+```properties
+export=/path/to/driver.xml
+channel=publisher
+driverDN=\TREE\system\driverset\MyDriver
+```
+
+**or** a **Designer project** + driver name:
 
 ```properties
 project=/path/to/designer_workspace/MyProject
@@ -99,9 +112,19 @@ channel=publisher
 driverDN=\TREE\system\driverset\MyDriver
 ```
 
-Either way the harness assembles your real channel chain (in IDM policy-set order)
-and loads the driver's GCVs and ECMAScript resources. With `project=` it also loads
-the **schema** and validates `input.xds`/`directory.xds` against it.
+Any of them assembles your real channel chain (in IDM policy-set order) and loads
+the driver's GCVs and ECMAScript resources. With `project=` it also loads the
+**schema** and validates `input.xds`/`directory.xds` against it.
+
+> **Producing the LDIF** — a plain `ldapsearch *` omits the DirXML policy/config
+> attributes, so request them explicitly:
+> ```bash
+> ldapsearch -o ldif-wrap=no -b "cn=<DriverSet>,o=system" -s sub "(objectclass=*)" \
+>   '*' XmlData DirXML-Policies DirXML-ShimConfigInfo DirXML-ConfigValues \
+>   DirXML-JavaModule DirXML-DriverFilter DirXML-ShimAuthServer DirXML-ShimAuthID
+> ```
+> The same file (or a `'*'`-only dump) can seed the fake directory with real
+> objects — add `ldif=that-file.ldif` to the case.
 
 ### d. Step through it
 
