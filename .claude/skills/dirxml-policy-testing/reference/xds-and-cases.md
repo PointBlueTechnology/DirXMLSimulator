@@ -228,7 +228,8 @@ ldap=ldaps://host:636
 ldapBindDn=cn=admin,ou=sa,o=system
 ldapBindPassword.named=ldap-bind     # or ldapBindPassword=<literal>
 ldapSearchBase=o=data
-ldapTrustAll=true                    # ldaps with an internal CA (test only)
+# TLS cert validation is OFF by default (test directories use self-signed/internal
+# CAs); set ldapTrustAll=false to require a valid cert.
 ldapDnTree=ACME-TREE                 # tree name for slash-form DN values
 ```
 
