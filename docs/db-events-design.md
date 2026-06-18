@@ -71,10 +71,16 @@ candidate set; the per-event files make the final selection explicit.
 
 ## Dependency
 
-**PostgreSQL JDBC** (`org.postgresql:postgresql`) — open-source (BSD), on Maven
-Central; staged as `lib/postgresql.jar` for the `bin/sim` classpath. Unlike the
-NetIQ jars it is freely downloadable and redistributable. Only the `dbevents`
-feature needs it.
+**PostgreSQL JDBC** (`org.postgresql:postgresql`, runtime scope) — open-source
+(BSD). No manual staging, unlike the NetIQ jars:
+
+- **Building from source**: Maven fetches it from Central and the dependency-plugin
+  stages it into `lib/postgresql.jar` (for the `bin/sim`/exec-jar classpath)
+  automatically during the build.
+- **Running a release**: the dist zip **bundles** `lib/postgresql.jar` (it is freely
+  redistributable), so it works out of the box.
+
+Only the `dbevents` feature loads it (via the JDBC ServiceLoader).
 
 ## Validation
 

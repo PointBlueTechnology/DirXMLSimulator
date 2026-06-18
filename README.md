@@ -43,8 +43,9 @@ policy, and re-run in a loop.
   DxCMD's LDAP extended ops; needs the optional `lib/ldap.jar`.
 - **Real input events from the Event Logger DB** — `bin/sim dbevents` queries a
   **DirXML Event Logger** PostgreSQL history (by DN, driver, type, time) and writes
-  each logged transaction as a pickable sample. Needs the optional (open-source)
-  `lib/postgresql.jar`.
+  each logged transaction as a pickable sample. Uses the open-source PostgreSQL
+  JDBC driver, which Maven fetches automatically and releases bundle — no manual
+  jar to stage.
 - **Golden tests** — compare final output (and directory end-state) against
   recorded goldens; non-zero exit on mismatch.
 

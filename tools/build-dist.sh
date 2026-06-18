@@ -24,6 +24,13 @@ mkdir -p "$DIST/bin" "$DIST/lib" "$DIST/cases"
 cp "$JAR" "$DIST/"
 cp bin/sim bin/sim.cmd "$DIST/bin/"
 cp lib/README.md "$DIST/lib/"
+# Bundle ONLY the open-source PostgreSQL JDBC jar (BSD, redistributable) so the
+# dbevents feature works out of the box. The proprietary NetIQ jars are NEVER
+# bundled — the user supplies those.
+if [ -f lib/postgresql.jar ]; then
+    cp lib/postgresql.jar "$DIST/lib/"
+    echo "    bundled lib/postgresql.jar (open-source)"
+fi
 cp -R .claude "$DIST/"
 cp -R docs "$DIST/"
 cp AGENTS.md README.md "$DIST/"

@@ -96,13 +96,16 @@
         </dependency>
         <dependency>
             <!-- PostgreSQL JDBC (open-source, BSD) — only for the EventLogger DB
-                 event source (bin/sim dbevents). Freely downloadable from Maven
-                 Central; staged in lib/ like the others for the bin/sim classpath. -->
+                 event source (bin/sim dbevents). A real Maven dependency: Maven
+                 fetches it from Central, the dependency-plugin stages it into lib/
+                 for the bin/sim / exec-jar classpath, and build-dist bundles it in
+                 the release (it is freely redistributable, unlike the NetIQ jars).
+                 runtime scope — loaded via JDBC ServiceLoader, not referenced at
+                 compile time (we use only java.sql). -->
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <version>42.7.7</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/lib/postgresql.jar</systemPath>
+            <scope>runtime</scope>
         </dependency>
 
         <dependency>
@@ -120,6 +123,33 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.2</version>
+            </plugin>
+            <!-- Stage the (open-source) PostgreSQL JDBC jar into lib/ so the
+                 bin/sim `lib/*` classpath and the exec-jar Class-Path resolve it
+                 without any manual download. Runs early (process-resources) so it
+                 is present for any build. lib/ is gitignored. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.6.1</version>
+                <executions>
+                    <execution>
+                        <id>stage-postgresql</id>
+                        <phase>process-resources</phase>
+                        <goals><goal>copy</goal></goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>org.postgresql</groupId>
+                                    <artifactId>postgresql</artifactId>
+                                    <version>42.7.7</version>
+                                    <outputDirectory>${project.basedir}/lib</outputDirectory>
+                                    <destFileName>postgresql.jar</destFileName>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <!-- Convenience runner for the spike / CLI during development -->
             <plugin>
