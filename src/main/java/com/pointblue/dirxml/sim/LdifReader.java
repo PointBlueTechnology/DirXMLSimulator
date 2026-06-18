@@ -133,24 +133,34 @@ public final class LdifReader {
         return any ? attrEl : null;
     }
 
-    /** Structural class for the entry: structuralObjectClass if present, else a known objectClass. */
+    /**
+     * Structural class for the entry: {@code structuralObjectClass} if present,
+     * else the first {@code objectClass} the schema recognizes. Failing that, the
+     * first non-{@code Top} objectClass — eDir lists the structural class first and
+     * auxiliary classes (e.g. {@code pwmUser}) last, so first beats last.
+     */
     private String structuralClass(Entry e) {
         List<Object> structural = e.attrs.get("structuralobjectclass");
         if (structural != null && !structural.isEmpty()) {
             return asString(structural.get(0));
         }
         List<Object> ocs = e.attrs.get("objectclass");
-        String last = null;
+        String firstNonTop = null;
         if (ocs != null) {
             for (Object oc : ocs) {
                 String s = asString(oc);
-                last = s;
                 if (schema.hasClass(s)) {
-                    return s;   // a class the schema recognizes
+                    return s;   // a class the schema recognizes — most-derived wins
+                }
+                if (firstNonTop == null && !s.equalsIgnoreCase("Top")) {
+                    firstNonTop = s;
                 }
             }
         }
-        return last != null ? last : "";
+        if (firstNonTop != null) {
+            return firstNonTop;
+        }
+        return (ocs != null && !ocs.isEmpty()) ? asString(ocs.get(0)) : "";
     }
 
     /** {@code dirxml-associations} value matching the configured driver: {@code DN#state#value}. */

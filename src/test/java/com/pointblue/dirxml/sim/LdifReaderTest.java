@@ -119,6 +119,19 @@ public class LdifReaderTest {
     }
 
     @Test
+    public void structuralClassPrefersFirstNonTopWithoutSchema() {
+        // eDir lists structural class first, auxiliary classes (pwmUser) last;
+        // with no schema to consult, the structural one must still win.
+        String e = "dn: cn=u,o=data\n"
+            + "objectClass: inetOrgPerson\nobjectClass: organizationalPerson\n"
+            + "objectClass: Person\nobjectClass: Top\nobjectClass: pwmUser\n"
+            + "sn: U\n\n";
+        LdifReader noSchema = new LdifReader(SchemaModel.empty(), new LdapValueNormalizer(), null);
+        Element inst = Xds.firstByName(noSchema.toInstances(e).getDocumentElement(), "instance");
+        assertEquals("inetOrgPerson", inst.getAttribute("class-name"));
+    }
+
+    @Test
     public void multipleEntriesParsed() {
         String two =
             "dn: cn=a,o=data\nobjectClass: inetOrgPerson\nsn: A\n\n"
