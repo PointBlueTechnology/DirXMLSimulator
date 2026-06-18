@@ -189,15 +189,30 @@ public final class Case {
 
             Document input = Xds.parseFile(caseDir.resolve("input.xds"));
 
-            // Schema (from the project, or an explicit schema=<file|dir>) validates inputs.
+            // Schema validates inputs. Sources: an explicit schema=<file|dir>, the
+            // Designer project, or — with a live connection — read directly from
+            // LDAP (schema=ldap, or auto when ldap= is set and nothing else supplies one).
             SchemaModel schema = SchemaModel.empty();
             String schemaRef = p.getProperty("schema");
-            if (schemaRef != null && !schemaRef.isBlank()) {
+            boolean wantLdapSchema = "ldap".equalsIgnoreCase(schemaRef == null ? "" : schemaRef.trim());
+            if (schemaRef != null && !schemaRef.isBlank() && !wantLdapSchema) {
                 Path sp = caseDir.resolve(schemaRef.trim());
                 schema = Files.isDirectory(sp) ? DesignerProject.load(sp).schema()
                     : SchemaModel.parseFile(sp);
             } else if (project != null) {
                 schema = project.schema();
+            }
+            JndiLdapSearch.Config ldapCfg = ldapConfig(p, directory);
+            if (schema.isEmpty() && (wantLdapSchema || ldapCfg != null)) {
+                if (ldapCfg == null) {
+                    throw new IllegalArgumentException("schema=ldap requires ldap=<url>");
+                }
+                try {
+                    schema = new JndiLdapSearch(ldapCfg, SchemaModel.empty()).readSchema();
+                    System.out.println("note: schema read from LDAP " + ldapCfg.url);
+                } catch (Exception e) {
+                    System.err.println("warning: could not read schema from LDAP: " + e.getMessage());
+                }
             }
             List<String> schemaWarnings = new ArrayList<>(schema.validate(input));
             if (Files.exists(dirFile)) {
@@ -254,13 +269,8 @@ public final class Case {
             FakeDirectory directory, SchemaModel schema, ChannelSimulator sim) {
         // --- live-LDAP query source (optional) ---
         LdapQueryProcessor ldapQp = null;
-        String ldapUrl = p.getProperty("ldap");
-        if (ldapUrl != null && !ldapUrl.isBlank()) {
-            JndiLdapSearch.Config lc = new JndiLdapSearch.Config();
-            lc.url = ldapUrl.trim();
-            lc.bindDn = p.getProperty("ldapBindDn");
-            lc.bindPassword = resolveSecret(p, directory, "ldapBindPassword");
-            lc.trustAllCerts = Boolean.parseBoolean(p.getProperty("ldapTrustAll", "false"));
+        JndiLdapSearch.Config lc = ldapConfig(p, directory);
+        if (lc != null) {
             ldapQp = new LdapQueryProcessor(
                 new JndiLdapSearch(lc, schema), schema,
                 new LdapValueNormalizer(p.getProperty("ldapDnTree")),
@@ -308,6 +318,20 @@ public final class Case {
         XdsQueryProcessor backChannel = ldapQp != null ? ldapQp : directory;
         sim.withCommandSink(ShimAdapter.create(
             shimClass, ShimAdapter.classLoaderFor(jars), initDoc, backChannel));
+    }
+
+    /** Build the LDAP connection config from `ldap*` keys, or null if `ldap=` is absent. */
+    private static JndiLdapSearch.Config ldapConfig(Properties p, FakeDirectory directory) {
+        String url = p.getProperty("ldap");
+        if (url == null || url.isBlank()) {
+            return null;
+        }
+        JndiLdapSearch.Config lc = new JndiLdapSearch.Config();
+        lc.url = url.trim();
+        lc.bindDn = p.getProperty("ldapBindDn");
+        lc.bindPassword = resolveSecret(p, directory, "ldapBindPassword");
+        lc.trustAllCerts = Boolean.parseBoolean(p.getProperty("ldapTrustAll", "false"));
+        return lc;
     }
 
     /** A secret from {@code <key>=<literal>} or {@code <key>.named=<namedPassword>}. */

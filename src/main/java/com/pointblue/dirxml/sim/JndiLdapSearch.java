@@ -79,6 +79,67 @@ public final class JndiLdapSearch implements LdapQueryProcessor.Search {
         }
     }
 
+    /**
+     * Read the eDirectory schema directly from the LDAP subschema: follow the root
+     * DSE's {@code subschemaSubentry} to {@code cn=schema}, read its
+     * {@code attributeTypes}/{@code objectClasses}, and parse via
+     * {@link LdapSchemaReader}. Lets a live LDAP connection populate the schema with
+     * no Designer project. Throws if the host/subschema can't be read.
+     */
+    public SchemaModel readSchema() {
+        LdapContext ctx = null;
+        try {
+            ctx = connect(Set.of());
+            String schemaDn = readSubschemaDn(ctx);
+            SearchControls c = new SearchControls();
+            c.setSearchScope(SearchControls.OBJECT_SCOPE);
+            c.setReturningAttributes(new String[]{"attributeTypes", "objectClasses"});
+            NamingEnumeration<SearchResult> r = ctx.search(schemaDn, "(objectClass=*)", c);
+            List<String> attrTypes = new ArrayList<>();
+            List<String> objClasses = new ArrayList<>();
+            while (r.hasMore()) {
+                Attributes a = r.next().getAttributes();
+                collect(a.get("attributeTypes"), attrTypes);
+                collect(a.get("objectClasses"), objClasses);
+            }
+            return LdapSchemaReader.parse(attrTypes, objClasses);
+        } catch (Exception e) {
+            throw new RuntimeException("could not read LDAP schema: " + e.getMessage(), e);
+        } finally {
+            if (ctx != null) {
+                try {
+                    ctx.close();
+                } catch (Exception ignore) {
+                    // best effort
+                }
+            }
+        }
+    }
+
+    private static String readSubschemaDn(LdapContext ctx) throws Exception {
+        SearchControls c = new SearchControls();
+        c.setSearchScope(SearchControls.OBJECT_SCOPE);
+        c.setReturningAttributes(new String[]{"subschemaSubentry"});
+        NamingEnumeration<SearchResult> r = ctx.search("", "(objectClass=*)", c);
+        if (r.hasMore()) {
+            Attribute sse = r.next().getAttributes().get("subschemaSubentry");
+            if (sse != null && sse.size() > 0) {
+                return String.valueOf(sse.get(0));
+            }
+        }
+        return "cn=schema";   // eDir default
+    }
+
+    private static void collect(Attribute attr, List<String> into) throws Exception {
+        if (attr == null) {
+            return;
+        }
+        NamingEnumeration<?> vals = attr.getAll();
+        while (vals.hasMore()) {
+            into.add(String.valueOf(vals.next()));
+        }
+    }
+
     private LdapContext connect(Set<String> binaryAttrs) throws Exception {
         Hashtable<String, Object> env = new Hashtable<>();
         env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
