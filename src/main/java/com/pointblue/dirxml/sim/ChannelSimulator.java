@@ -1,5 +1,7 @@
 package com.pointblue.dirxml.sim;
 
+import com.novell.nds.dirxml.engine.XdsCommandProcessor;
+import com.novell.nds.dirxml.engine.XdsQueryProcessor;
 import com.novell.nds.dirxml.engine.rules.RuleDynamicContext;
 
 import org.w3c.dom.Document;
@@ -54,10 +56,33 @@ public final class ChannelSimulator {
     private final EngineContext ctx;
     private final FakeDirectory dir;
     private final List<PolicyStage> stages = new ArrayList<>();
+    private XdsQueryProcessor querySource;   // optional: live LDAP instead of FakeDirectory
+    private XdsCommandProcessor commandSink;  // optional: a real shim as terminal command sink
 
     public ChannelSimulator(EngineContext ctx, FakeDirectory dir) {
         this.ctx = ctx;
         this.dir = dir != null ? dir : new FakeDirectory();
+    }
+
+    /**
+     * Answer the chain's queries from this source (e.g. {@link LdapQueryProcessor}
+     * over live eDir) instead of the {@link FakeDirectory}. Optional — null keeps
+     * the FakeDirectory as the query source. Commands still write back to the
+     * FakeDirectory during the chain.
+     */
+    public ChannelSimulator withQuerySource(XdsQueryProcessor source) {
+        this.querySource = source;
+        return this;
+    }
+
+    /**
+     * After the chain, hand the final command to this sink (a {@link ShimAdapter}
+     * over a real connector) and capture its response as a terminal {@code shim}
+     * snapshot. Optional — null ends the run at the chain's output, as before.
+     */
+    public ChannelSimulator withCommandSink(XdsCommandProcessor sink) {
+        this.commandSink = sink;
+        return this;
     }
 
     public ChannelSimulator add(PolicyStage stage) {
@@ -112,7 +137,8 @@ public final class ChannelSimulator {
         dir.drainQueries();   // clear any prior interactions
         dir.drainCommands();
 
-        RuleDynamicContext dyn = ctx.newDynamicContext(dir);
+        RuleDynamicContext dyn = ctx.newDynamicContext(
+            querySource != null ? querySource : dir, dir);
         Document doc = input;
         List<StageSnapshot> snapshots = new ArrayList<>();
 
@@ -140,6 +166,25 @@ public final class ChannelSimulator {
             snapshots.add(new StageSnapshot(
                 stage.name(), inXds, outXds, stageTrace,
                 dir.drainQueries(), dir.drainCommands()));
+        }
+
+        // Optional terminal sink: hand the chain's final command to a real shim
+        // and capture its response as a "shim" snapshot. The chain output (doc) is
+        // unchanged — the shim's status/association is shown separately.
+        if (commandSink != null) {
+            String inXds = Xds.serialize(doc);
+            int mark = ctx.trace().length();
+            try {
+                Document resp = commandSink.execute(doc);
+                String outXds = resp != null ? Xds.serialize(resp) : "";
+                String t = ctx.trace().substring(Math.min(mark, ctx.trace().length()));
+                snapshots.add(new StageSnapshot("shim", inXds, outXds, t,
+                    dir.drainQueries(), dir.drainCommands()));
+            } catch (Exception e) {
+                Throwable cause = e.getCause() != null ? e.getCause() : e;
+                snapshots.add(new StageSnapshot("shim", inXds, inXds, "",
+                    dir.drainQueries(), dir.drainCommands(), cause.getMessage()));
+            }
         }
 
         return new Result(snapshots, doc, ctx.trace());
