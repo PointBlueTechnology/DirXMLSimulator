@@ -261,6 +261,11 @@ public final class Cli {
         int token = Integer.parseInt(p.getProperty("cacheToken", "0"));
         DxCacheReader.Result r = new DxCacheReader(c).readCache(driver.trim(), token, count);
 
+        if (!r.readable) {
+            System.out.println("driver is " + r.stateName() + " (state " + r.driverState
+                + ") — stop it to read its event cache: " + driver);
+            return 0;
+        }
         if (r.empty) {
             System.out.println("driver cache is EMPTY for " + driver);
             return 0;

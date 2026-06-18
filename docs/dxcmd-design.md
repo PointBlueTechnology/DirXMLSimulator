@@ -76,7 +76,11 @@ value, but with real caveats:
 
 - Needs a live LDAP connection to the IDM **server hosting the driver** (the engine
   runs there); the bind identity needs rights on the driver object.
-- Cache read is best on a **stopped** driver (a running one drains its cache); it is
-  read-only and safe.
+- Cache read requires a **stopped** driver — a running one is actively draining its
+  cache and the engine rejects the read with an opaque `LDAP_OTHER` ("Other"). The
+  reader checks `GetDriverState` first (0=stopped, 1=starting, 2=running, 3=stopping,
+  verified live) and, if the driver isn't stopped, returns `readable=false` with the
+  state so the CLI says "driver is running — stop it to read its cache" instead of
+  surfacing the cryptic error.
 - Cached events carry engine metadata attributes the headless run tolerates (the
   interpreter ignores unknown attributes); they reflect real production traffic.
