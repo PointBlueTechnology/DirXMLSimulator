@@ -96,6 +96,58 @@ public final class DriverExport {
         return Xds.firstByName(root, "filter");
     }
 
+    /** The driver shim class ({@code <java-module value="…">}), or null if absent. */
+    public String shimClass() {
+        Element jm = Xds.firstByName(root, "java-module");
+        if (jm == null || jm.getAttribute("value").isEmpty()) {
+            return null;
+        }
+        return jm.getAttribute("value");
+    }
+
+    /** The driver DN ({@code <driver-configuration dn="…">}); empty if absent. */
+    public String driverDn() {
+        return root.getAttribute("dn");
+    }
+
+    /**
+     * The shim init parameters defined in this export: shim class, DN, optional
+     * authentication-info, and the {@code <driver-options>}/{@code <subscriber-options>}/
+     * {@code <publisher-options>} blocks (preferring a block that actually holds
+     * resolved {@code <definition>}s, since an export can also carry empty
+     * placeholder blocks inside {@code <shim-config-info-xml>}). The password is
+     * not in the export — supply it from the named-password channel.
+     */
+    public ShimConfig shimConfig() {
+        Element auth = Xds.firstByName(root, "authentication-info");
+        String server = auth == null ? null : childText(auth, "server");
+        String user = auth == null ? null : childText(auth, "user");
+        return new ShimConfig(shimClass(), driverDn(), server, user,
+            optionsBlock("driver-options"),
+            optionsBlock("subscriber-options"),
+            optionsBlock("publisher-options"));
+    }
+
+    /** Prefer an options block holding a {@code <definition>}; else the first found. */
+    private Element optionsBlock(String localName) {
+        Element first = null;
+        for (Element block : allDescendants(root, localName)) {
+            if (first == null) {
+                first = block;
+            }
+            Element cv = Xds.firstByName(block, "configuration-values");
+            if (cv != null && Xds.firstByName(cv, "definition") != null) {
+                return block;
+            }
+        }
+        return first;
+    }
+
+    private static String childText(Element parent, String localName) {
+        Element c = Xds.firstByName(parent, localName);
+        return c == null ? null : Xds.text(c);
+    }
+
     public static DriverExport load(Path file) {
         return load(Xds.parseFile(file));
     }
