@@ -23,6 +23,7 @@ bin/sim step   <caseDir> [--rules]   per-stage (or per-rule) input/output/querie
 bin/sim test   <caseDir>             diff vs goldens; exit 0 pass, 1 mismatch
 bin/sim record <caseDir>             write expected-output.xds / expected-directory.xds
 bin/sim extract <trace> <outDir>     mine a DSTrace log into a case
+bin/sim dxcache <caseDir>            read a stopped driver's event cache (live) into the case
 bin/sim doctor                       setup self-check
 ```
 

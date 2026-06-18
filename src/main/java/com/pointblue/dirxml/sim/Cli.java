@@ -33,6 +33,19 @@ public final class Cli {
                 System.exit(3);
             }
         }
+        if (args.length >= 1 && args[0].equals("dxcache")) {
+            if (args.length < 2) {
+                System.err.println("usage: dxcache <caseDir>   "
+                    + "(reads ldap=/ldapBindDn/ldapBindPassword/cacheDriver from case.properties)");
+                System.exit(2);
+            }
+            try {
+                System.exit(doDxCache(Paths.get(args[1])));
+            } catch (Exception e) {
+                System.err.println("ERROR: " + e.getMessage());
+                System.exit(3);
+            }
+        }
         if (args.length < 2) {
             usage();
             System.exit(2);
@@ -207,6 +220,74 @@ public final class Cli {
         return 0;
     }
 
+    /**
+     * Read a stopped driver's event cache (queued subscriber events) from a live
+     * server via DxCMD's LDAP extended ops, and write them into the case as
+     * {@code cache.xds} (raw) and {@code input.xds} (if absent). Connection comes
+     * from the case's {@code ldap=}/{@code ldapBindDn}/{@code ldapBindPassword}
+     * keys plus {@code cacheDriver=<driverDN>}.
+     */
+    private static int doDxCache(Path caseDir) throws Exception {
+        java.util.Properties p = new java.util.Properties();
+        Path pf = caseDir.resolve("case.properties");
+        if (Files.exists(pf)) {
+            try (var in = Files.newInputStream(pf)) {
+                p.load(in);
+            }
+        }
+        String url = p.getProperty("ldap");
+        String driver = p.getProperty("cacheDriver", p.getProperty("driverDN"));
+        if (url == null || url.isBlank() || driver == null || driver.isBlank()) {
+            System.err.println("dxcache needs ldap=<url> and cacheDriver=<driverDN> in case.properties");
+            return 2;
+        }
+        DxCacheReader.Config c = new DxCacheReader.Config();
+        String lower = url.trim().toLowerCase();
+        c.ssl = lower.startsWith("ldaps");
+        String hostPort = url.trim().replaceFirst("(?i)^ldaps?://", "").replaceAll("/.*$", "");
+        int colon = hostPort.indexOf(':');
+        if (colon >= 0) {
+            c.host = hostPort.substring(0, colon);
+            c.port = Integer.parseInt(hostPort.substring(colon + 1));
+        } else {
+            c.host = hostPort;
+            c.port = c.ssl ? 636 : 389;
+        }
+        c.bindDn = p.getProperty("ldapBindDn");
+        c.password = p.getProperty("ldapBindPassword");
+        c.trustAllCerts = Boolean.parseBoolean(p.getProperty("ldapTrustAll", "true"));
+
+        int count = Integer.parseInt(p.getProperty("cacheCount", "100"));
+        int token = Integer.parseInt(p.getProperty("cacheToken", "0"));
+        DxCacheReader.Result r = new DxCacheReader(c).readCache(driver.trim(), token, count);
+
+        if (r.empty) {
+            System.out.println("driver cache is EMPTY for " + driver);
+            return 0;
+        }
+        Path cacheFile = caseDir.resolve("cache.xds");
+        Files.writeString(cacheFile, r.xds);
+        int ops = countOps(r.xds);
+        System.out.println("wrote " + cacheFile + "  (" + ops + " cached events, "
+            + r.xds.length() + " bytes; nextToken=" + r.nextToken + ")");
+        Path input = caseDir.resolve("input.xds");
+        if (!Files.exists(input)) {
+            Files.writeString(input, r.xds);
+            System.out.println("wrote input.xds (the cached events as one <input> batch)");
+        } else {
+            System.out.println("input.xds already exists; left unchanged (use cache.xds)");
+        }
+        return 0;
+    }
+
+    private static int countOps(String xds) {
+        return (xds.split("<modify", -1).length - 1)
+            + (xds.split("<add ", -1).length - 1)
+            + (xds.split("<delete", -1).length - 1)
+            + (xds.split("<rename", -1).length - 1)
+            + (xds.split("<move", -1).length - 1);
+    }
+
     /** Self-check: JDK, engine jars, and a smoke run of the bundled sample case. */
     private static int doDoctor() {
         boolean ok = true;
@@ -303,6 +384,7 @@ public final class Cli {
         System.err.println("  test   <caseDir>             diff vs expected-*.xds; exit !=0 on mismatch");
         System.err.println("  record <caseDir>             write goldens");
         System.err.println("  extract <traceFile> <outDir> mine a DSTrace log into a case");
+        System.err.println("  dxcache <caseDir>            read a driver's event cache (live) into the case");
         System.err.println("  doctor                       setup self-check");
     }
 }
