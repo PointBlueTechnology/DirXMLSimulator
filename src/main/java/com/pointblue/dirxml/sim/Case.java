@@ -183,6 +183,14 @@ public final class Case {
                 schemaWarnings.addAll(schema.validate(Xds.parseFile(dirFile)));
             }
 
+            // Optional: seed the fake directory from an LDIF dump (ldapsearch/ICE
+            // export), mapped to native XDS via the schema + value normalizer.
+            String ldifRef = p.getProperty("ldif");
+            if (ldifRef != null && !ldifRef.isBlank()) {
+                new LdifReader(schema, new LdapValueNormalizer(p.getProperty("ldapDnTree")), driverDN)
+                    .seed(directory, caseDir.resolve(ldifRef.trim()));
+            }
+
             // Optional, opt-in: a live-LDAP query source and/or a real shim command
             // sink. Absent keys ⇒ the chain runs against FakeDirectory, as before.
             wireShimAndLdap(p, caseDir, export, project, projectDriver, directory, schema, sim);
