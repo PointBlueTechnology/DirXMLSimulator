@@ -31,7 +31,10 @@ bin/sim doctor                       setup self-check
 1. **Get inputs** — `bin/sim extract <trace> <caseDir>` mines a production DSTrace
    log into a runnable case (real input event + directory state), or hand-author a
    case directory. No trace? Seed the fake directory from an LDIF dump with
-   `ldif=<file>` in `case.properties`.
+   `ldif=<file>` in `case.properties`. **If you're missing the config, the input
+   event, or the seed data the policies look up, ask the user for it and say how to
+   produce it — don't run on empty data or guess.** The skill's "If an input is
+   missing, ask" section maps each gap to what to request.
 2. **Point at the driver** — set the chain source in `<caseDir>/case.properties`
    and `channel=publisher|subscriber`. Three sources: `export=<driver.xml>`, a
    Designer `project=<dir>`+`driver=<name>`, or — often easiest — an

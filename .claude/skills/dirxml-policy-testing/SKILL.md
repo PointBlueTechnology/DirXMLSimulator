@@ -64,10 +64,38 @@ document marker means, and how to read the rule trace to debug.
 (names mapped via the schema, values normalized by syntax). Good for realistic
 data at scale when you don't have a per-transaction trace.
 
+## If an input is missing, ask — don't guess or run on empty data
+
+Before running, confirm you have the three things a meaningful test needs: a
+**config source** (the driver's policies), an **input event**, and the
+**directory/seed data** the policies will look up. If any is missing — or a run
+reveals a gap — **stop and ask the user for it, and tell them exactly how to
+produce it.** Do not silently proceed with empty data (a query that finds nothing
+produces a misleading "missing value" result) or invent values. Ask **once, for
+everything you're missing**, rather than discovering gaps one run at a time; if you
+proceed on partial data, state what you assumed and what would raise fidelity.
+
+How to recognize each gap and what to request:
+
+| You need | Sign it's missing | Ask for / how the user gets it |
+|---|---|---|
+| **Driver config** | no `export=`/`project=`/`ldifConfig=` set, or `No driver '…'` | Which do they have? a Designer **export** (right-click driver → *Export to Configuration File*), a **Designer project** path + driver name, or an **LDIF vault dump** (easiest — covers the whole driver set). |
+| **DirXML attrs in the LDIF** | `ldifConfig=` loads but the chain is empty / `no XmlData` warnings | It was a plain `ldapsearch *`, which omits them. Re-export **requesting the DirXML attributes**: `'*' XmlData DirXML-Policies DirXML-ShimConfigInfo DirXML-ConfigValues DirXML-JavaModule DirXML-DriverFilter` (full command in [reference/xds-and-cases.md](reference/xds-and-cases.md)). |
+| **Input event** | no `input.xds`, or you'd be authoring it blind | A **DSTrace** of the real transaction (then `bin/sim extract`), or a precise description (operation, class, key attributes) so you can author one. |
+| **Seed / directory data** | a `<query>` returns no `<instance>` and a value then goes missing downstream | The object(s) the policy looks up — a **trace** (carries the directory's real answers), an **LDIF dump** of those objects (`ldif=`), or the specific attribute values to hand-seed `directory.xds`. |
+| **A named password** | `WARNING: named password(s) … not supplied` | The secret value — intentionally absent from exports; set `namedPassword.<name>=…`. Treat as sensitive. |
+| **A GCV value** | a GCV resolves empty / the policy behaves as if it's unset | The value (or a `gcv.xml` override); a stale value may mean they need a fresher export. |
+| **A Java extension class** | `WARNING: Java extension classes not on the classpath` | The jar that defines it, to stage in `lib/`. |
+| **An `es:` function** | a stage `[ERROR]` "function not found" | The ECMAScript resource (from the export/project, or a `.js` for `ecmascript/`). |
+| **Schema** (validation) | schema warnings never fire / you can't catch typos | A `project=` or `schema=<*_schema.xml or project dir>` so unknown classes/attributes are flagged. |
+| **(Shim testing)** shim jar / app auth | `shim=` load error, or the shim's auth fails | The connector jar (`shimJar=`, stage in `lib/`) and the app password (`shimAuthPassword.named=`). |
+
 ## The loop
 
 1. **Create a case** — `extract` from a trace (above), copy `cases/copy-surname`,
-   or hand-author a directory under `cases/`. See "Case layout" below.
+   or hand-author a directory under `cases/`. See "Case layout" below. First
+   confirm you actually have the config + event + seed data; if not, ask for them
+   (see "If an input is missing, ask" above) before building a half-empty case.
 2. **Run it**: `bin/sim run <caseDir>` (final output + per-stage summary), or
    `bin/sim step <caseDir>` to see every stage's input→output, the queries it
    issued, and its rule trace.
