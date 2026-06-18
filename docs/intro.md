@@ -103,8 +103,6 @@ shim parameters); pick whichever you have.
   dump of the DriverSet subtree carries the policy chain, GCVs, filter, and shim
   parameters, *and* — from the same file or a companion dump — realistic
   **directory data** to seed the fake directory. No Designer, no per-driver export.
-  (One catch: a plain `ldapsearch *` omits the DirXML data attributes — request
-  them explicitly; the README/quickstart give the exact command.)
 - **A driver export.** In **Designer**: right-click the driver → **Export to
   Configuration File**. That single `.xml` contains the policy chain, schema
   mapping, filter, GCVs, and ECMAScript resources.
