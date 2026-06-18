@@ -251,6 +251,63 @@ build and bundled in releases. (The Postgres password is the **database** passwo
 which is typically *not* your eDirectory password.) See
 [docs/db-events-design.md](db-events-design.md) for the table schema and all filters.
 
+## Directory data: what the policies look up
+
+When a policy issues a `<query>` (matching, attribute reads, `do-find-matching-object`),
+the answer comes from the **fake directory**. Seed it any of these ways — they can be
+combined:
+
+- **`directory.xds`** — hand-authored `<instance>` state, or written by `bin/sim
+  extract` from a trace (the directory's real query answers).
+- **An LDIF dump** — load real objects with `ldif=`:
+  ```properties
+  ldif=/path/to/users.ldif
+  ```
+  Dump a few objects with `ldapsearch`/ICE (any `'*'` export works):
+  ```bash
+  ldapsearch -o ldif-wrap=no -b "ou=users,o=data" -s sub "(objectclass=*)" '*' > users.ldif
+  ```
+  Entries are mapped to native XDS via the schema — attribute/class names go
+  DirXML-ward and values are normalized by syntax (a base64 `::` GUID stays
+  base64/octet, generalized time → seconds, a DN value → slash form). A
+  `dirxml-associations` value matching the case's `driverDN` becomes the instance's
+  `<association>`.
+- **Live eDirectory** — with `ldap=` set, the chain's queries are answered straight
+  from the running vault (no seeding needed):
+  ```properties
+  ldap=ldaps://host:636
+  ldapBindDn=cn=admin,ou=sa,o=system
+  ldapBindPassword=...
+  ldapSearchBase=o=data
+  ```
+  Values come back normalized the same way (so a live `GUID` arrives as `type="octet"`
+  base64, not raw bytes). Best with a schema available (next), so binary/time/DN
+  attributes are recognized.
+
+## Schema: catch typo'd inputs
+
+A schema lets the harness flag mistakes in `input.xds`/`directory.xds` — an unknown
+class, an attribute not in the schema (a typo), an attribute not valid for its class,
+or multiple values on a single-valued attribute. Load one any of these ways:
+
+- **From a Designer project** — automatic when `project=` is set (the project's
+  `*_schema.xml`).
+- **From a file or project directory** — explicit:
+  ```properties
+  schema=/path/to/EMX2D58K_schema.xml      # or a Designer project directory
+  ```
+- **Live from LDAP** — read the eDirectory subschema (`cn=schema`) directly:
+  ```properties
+  schema=ldap        # or: automatic whenever ldap= is set and no other schema is given
+  ```
+  This is a full equivalent of the project's `*_schema.xml`, no project needed — it
+  recovers the true NDS/DirXML attribute names (from each definition's `X-NDS_NAME`)
+  and the eDir syntaxes that drive value normalization. A read failure is non-fatal
+  (it just warns; validation is skipped).
+
+Schema warnings are printed up front by `run`/`step`/`test`, e.g.
+`WARNING: schema validation … unknown attribute 'Sumame' (typo?)`.
+
 ## 4. Test a change
 
 Lock in the current behavior as a golden, edit the policy, and verify:
