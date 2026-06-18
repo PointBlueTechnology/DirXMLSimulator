@@ -3,6 +3,8 @@ package com.pointblue.dirxml.sim;
 import com.novell.nds.dirxml.engine.gcv.GCDefinitions;
 
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -187,6 +189,65 @@ public final class DesignerProject {
                 } catch (Exception ignore) {
                     // skip
                 }
+            }
+        }
+        return out;
+    }
+
+    /**
+     * The shim init parameters defined in the driver's Designer object: the shim
+     * class ({@code DirXML-JavaModule}), auth endpoint/id ({@code DirXML-ShimAuthServer}
+     * / {@code DirXML-ShimAuthID}), and the driver/subscriber/publisher option
+     * blocks parsed from the {@code DirXML-ShimConfigInfo} {@code <driver-config>}.
+     * The password is not stored in the project — supply it from the
+     * named-password channel.
+     */
+    public ShimConfig shimConfig(String driver) {
+        Element meta = driver(driver).meta;
+        Element drv = null;
+        Element sub = null;
+        Element pub = null;
+        String configInfo = cobjectAttr(meta, "DirXML-ShimConfigInfo");
+        if (configInfo != null && !configInfo.isBlank()) {
+            try {
+                Element dc = Xds.parse(configInfo).getDocumentElement(); // <driver-config>
+                drv = Xds.firstByName(dc, "driver-options");
+                sub = Xds.firstByName(dc, "subscriber-options");
+                pub = Xds.firstByName(dc, "publisher-options");
+            } catch (Exception e) {
+                System.err.println("warning: could not parse DirXML-ShimConfigInfo for "
+                    + driver + ": " + e);
+            }
+        }
+        return new ShimConfig(cobjectAttr(meta, "DirXML-JavaModule"), null,
+            cobjectAttr(meta, "DirXML-ShimAuthServer"), cobjectAttr(meta, "DirXML-ShimAuthID"),
+            drv, sub, pub);
+    }
+
+    /** First descendant {@code <attributes attrName="name" value="…"/>} value, or null. */
+    private static String cobjectAttr(Element meta, String name) {
+        if (meta == null) {
+            return null;
+        }
+        for (Element a : descendantsByName(meta, "attributes")) {
+            if (name.equals(a.getAttribute("attrName"))) {
+                String v = a.getAttribute("value");
+                return v.isEmpty() ? null : v;
+            }
+        }
+        return null;
+    }
+
+    private static List<Element> descendantsByName(Node ctx, String localName) {
+        List<Element> out = new ArrayList<>();
+        NodeList kids = ctx.getChildNodes();
+        for (int i = 0; i < kids.getLength(); i++) {
+            Node k = kids.item(i);
+            if (k.getNodeType() == Node.ELEMENT_NODE) {
+                if (localName.equals(k.getLocalName())) {
+                    out.add((Element) k);
+                }
+                out.addAll(descendantsByName(k, localName));
             }
         }
         return out;
