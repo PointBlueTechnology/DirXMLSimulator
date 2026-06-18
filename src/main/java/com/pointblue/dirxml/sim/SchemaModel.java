@@ -36,6 +36,7 @@ public final class SchemaModel {
 
     private static final class Klass {
         String name;
+        String ldap;
         List<String> sup = new ArrayList<>();
         Set<String> opt = new LinkedHashSet<>();
     }
@@ -73,6 +74,7 @@ public final class SchemaModel {
             } else if (e.getLocalName().equals("class")) {
                 Klass k = new Klass();
                 k.name = e.getAttribute("name");
+                k.ldap = e.getAttribute("ldap");
                 for (Element c : Xds.childElements(e)) {
                     if (c.getLocalName().equals("sup")) {
                         k.sup.addAll(splitList(Xds.text(c)));
@@ -98,6 +100,15 @@ public final class SchemaModel {
 
     public Attr attr(String name) {
         return name == null ? null : attrs.get(name.toLowerCase());
+    }
+
+    /** LDAP name for a class (DirXML name in), or the input unchanged if unmapped. */
+    public String ldapClassName(String name) {
+        if (name == null) {
+            return null;
+        }
+        Klass k = classes.get(name.toLowerCase());
+        return (k != null && k.ldap != null && !k.ldap.isEmpty()) ? k.ldap : name;
     }
 
     /** All attributes allowed on a class, resolving superclasses. Empty if class unknown. */
