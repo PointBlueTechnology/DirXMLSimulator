@@ -6,6 +6,8 @@ import com.novell.ldap.LDAPJSSESecureSocketFactory;
 import com.novell.nds.dirxml.ldap.CloseChunkedResultRequest;
 import com.novell.nds.dirxml.ldap.GetChunkedResultRequest;
 import com.novell.nds.dirxml.ldap.GetChunkedResultResponse;
+import com.novell.nds.dirxml.ldap.GetDriverStateRequest;
+import com.novell.nds.dirxml.ldap.GetDriverStateResponse;
 import com.novell.nds.dirxml.ldap.ViewCacheEntriesRequest;
 import com.novell.nds.dirxml.ldap.ViewCacheEntriesResponse;
 
@@ -46,6 +48,12 @@ public final class DxCacheReader {
 
     private static final int MAX_CHUNK = 64512;   // dxcmd's chunk size
 
+    /** Driver states (from the engine's GetDriverState). */
+    public static final int STATE_STOPPED = 0;
+    public static final int STATE_STARTING = 1;
+    public static final int STATE_RUNNING = 2;
+    public static final int STATE_STOPPING = 3;
+
     private final Config config;
 
     public DxCacheReader(Config config) {
@@ -54,15 +62,26 @@ public final class DxCacheReader {
 
     /**
      * Read up to {@code count} cache entries for a driver starting at
-     * {@code startToken} (0 = from the beginning). Returns the entries as XDS text,
-     * or an empty string if the cache is empty.
+     * {@code startToken} (0 = from the beginning).
+     *
+     * <p>The cache is only meaningful for a <b>stopped</b> driver — a running one is
+     * actively draining it, and the engine rejects the read. So this checks the
+     * driver state first: if it isn't stopped, it returns a {@link Result} flagged
+     * {@code readable=false} with the state (rather than the engine's opaque "Other"
+     * LDAP error), so the caller can tell the user to stop the driver.
      */
     public Result readCache(String driverDN, int startToken, int count) {
         LDAPConnection conn = connect();
         try {
             // Register the typed extended responses so the SDK returns the subclasses.
+            GetDriverStateResponse.register();
             ViewCacheEntriesResponse.register();
             GetChunkedResultResponse.register();
+
+            int state = driverState(conn, driverDN);
+            if (state != STATE_STOPPED) {
+                return Result.notStopped(state);
+            }
 
             ViewCacheEntriesResponse resp = (ViewCacheEntriesResponse) conn.extendedOperation(
                 new ViewCacheEntriesRequest(driverDN, 1, startToken, count, 0));
@@ -70,10 +89,10 @@ public final class DxCacheReader {
             int size = resp.getDataSize();
             int nextToken = resp.getPositionToken();
             if (handle == 0 || size == 0) {
-                return new Result("", nextToken, true);   // empty cache (or no more entries)
+                return Result.read("", nextToken, true);   // stopped, empty cache
             }
             byte[] data = getChunkedResult(conn, handle, size);
-            return new Result(new String(data, StandardCharsets.UTF_8), nextToken, false);
+            return Result.read(new String(data, StandardCharsets.UTF_8), nextToken, false);
         } catch (LDAPException e) {
             throw new RuntimeException("DxCMD cache read failed for '" + driverDN + "': "
                 + e.getMessage(), e);
@@ -84,15 +103,44 @@ public final class DxCacheReader {
         }
     }
 
-    /** The cache contents plus the next position token (for paging) and an empty flag. */
+    private int driverState(LDAPConnection conn, String driverDN) throws LDAPException {
+        return ((GetDriverStateResponse) conn.extendedOperation(
+            new GetDriverStateRequest(driverDN))).getDriverState();
+    }
+
+    public static String stateName(int state) {
+        switch (state) {
+            case STATE_STOPPED: return "stopped";
+            case STATE_STARTING: return "starting";
+            case STATE_RUNNING: return "running";
+            case STATE_STOPPING: return "stopping";
+            default: return "state " + state;
+        }
+    }
+
+    /** Cache read outcome: whether the driver was readable (stopped), its state, the events. */
     public static final class Result {
         public final String xds;
         public final int nextToken;
-        public final boolean empty;
-        Result(String xds, int nextToken, boolean empty) {
+        public final boolean empty;       // stopped, but no queued events
+        public final boolean readable;    // driver was stopped, so the cache was read
+        public final int driverState;
+
+        private Result(String xds, int nextToken, boolean empty, boolean readable, int driverState) {
             this.xds = xds;
             this.nextToken = nextToken;
             this.empty = empty;
+            this.readable = readable;
+            this.driverState = driverState;
+        }
+        static Result read(String xds, int nextToken, boolean empty) {
+            return new Result(xds, nextToken, empty, true, STATE_STOPPED);
+        }
+        static Result notStopped(int state) {
+            return new Result("", 0, true, false, state);
+        }
+        public String stateName() {
+            return DxCacheReader.stateName(driverState);
         }
     }
 
