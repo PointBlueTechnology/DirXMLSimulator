@@ -22,3 +22,5 @@ trace samples/
 cases/proj-local/
 cases/schemachk/
 cases/proj-gcv/
+# Local live-LDAP test connection (contains a test credential)
+cases/ldap-live/

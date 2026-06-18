@@ -330,7 +330,10 @@ public final class Case {
         lc.url = url.trim();
         lc.bindDn = p.getProperty("ldapBindDn");
         lc.bindPassword = resolveSecret(p, directory, "ldapBindPassword");
-        lc.trustAllCerts = Boolean.parseBoolean(p.getProperty("ldapTrustAll", "false"));
+        // Default to NOT validating TLS certs: the harness only ever points at test
+        // directories, which routinely use self-signed / internal-CA certs. Set
+        // ldapTrustAll=false to re-enable validation.
+        lc.trustAllCerts = Boolean.parseBoolean(p.getProperty("ldapTrustAll", "true"));
         return lc;
     }
 
