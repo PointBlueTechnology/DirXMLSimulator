@@ -111,6 +111,15 @@ public final class SchemaModel {
         return (k != null && k.ldap != null && !k.ldap.isEmpty()) ? k.ldap : name;
     }
 
+    /** DirXML name for a class (LDAP or DirXML name in), or the input unchanged if unmapped. */
+    public String dirxmlClassName(String name) {
+        if (name == null) {
+            return null;
+        }
+        Klass k = classes.get(name.toLowerCase());
+        return (k != null && k.name != null && !k.name.isEmpty()) ? k.name : name;
+    }
+
     /** All attributes allowed on a class, resolving superclasses. Empty if class unknown. */
     public Set<String> effectiveAttrs(String className) {
         if (className == null) {

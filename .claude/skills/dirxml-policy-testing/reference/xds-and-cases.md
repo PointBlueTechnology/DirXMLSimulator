@@ -62,6 +62,23 @@ Direct reads by `dest-dn`/`src-dn` or `<association>` are supported. Commands th
 policy emits (`add`/`modify`/`delete`) mutate the directory, so matching→merge and
 create→read sequences behave realistically.
 
+## Seeding the fake directory from LDIF (optional)
+
+Instead of hand-writing `directory.xds`, point a case at an **LDIF** dump of real
+objects (`ldapsearch`/ICE export):
+
+```properties
+ldif=sample-users.ldif
+```
+
+Entries are mapped to native XDS the same way live LDAP is: attribute/class names
+DirXML-ward via the schema (so use `project=`/`schema=` for best results), values
+normalized by syntax (base64 `::` octet stays base64, generalized time → seconds,
+DN values → slash form). LDIF line folding and `::` base64 are handled; operational
+attributes (`entryDN`, `structuralObjectClass`, timestamps) are dropped. A
+`dirxml-associations` value matching the case's `driverDN` becomes the instance's
+`<association>`. Combine with `directory.xds` (both load) if you like.
+
 ## Channel (policy-set) order
 
 When you build a chain from a driver export, stages run in standard IDM order:
