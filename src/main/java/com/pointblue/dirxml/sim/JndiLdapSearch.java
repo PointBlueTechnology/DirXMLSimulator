@@ -116,6 +116,60 @@ public final class JndiLdapSearch implements LdapQueryProcessor.Search {
         }
     }
 
+    /**
+     * Read a driver's config from the live Identity Vault: a subtree search under
+     * the DriverSet DN, returning the {@code DirXML-Driver}/{@code -Rule}/etc.
+     * objects with their {@code XmlData}/{@code DirXML-Policies}/shim attributes,
+     * fed to {@link LdifDriverSource}. The XML-blob attributes are requested binary
+     * and decoded as UTF-8 text. Throws if the subtree can't be read.
+     */
+    public LdifDriverSource readDriverConfig(String driverSetDn) {
+        Set<String> binary = Set.of("xmldata", "dirxml-shimconfiginfo", "dirxml-configvalues",
+            "dirxml-driverfilter", "dirxml-enginecontrolvalues");
+        String[] want = {"objectClass", "cn", "XmlData", "DirXML-Policies",
+            "DirXML-ShimConfigInfo", "DirXML-ConfigValues", "DirXML-JavaModule",
+            "DirXML-DriverFilter", "DirXML-ShimAuthServer", "DirXML-ShimAuthID",
+            "DirXML-EngineControlValues"};
+        LdapContext ctx = null;
+        try {
+            ctx = connect(binary);
+            SearchControls c = new SearchControls();
+            c.setSearchScope(SearchControls.SUBTREE_SCOPE);
+            c.setReturningAttributes(want);
+            NamingEnumeration<SearchResult> r = ctx.search(driverSetDn, "(objectClass=*)", c);
+            List<LdifDriverSource.Entry> entries = new ArrayList<>();
+            while (r.hasMore()) {
+                SearchResult sr = r.next();
+                Map<String, List<String>> m = new LinkedHashMap<>();
+                NamingEnumeration<? extends Attribute> all = sr.getAttributes().getAll();
+                while (all.hasMore()) {
+                    Attribute at = all.next();
+                    List<String> vals = new ArrayList<>();
+                    NamingEnumeration<?> vs = at.getAll();
+                    while (vs.hasMore()) {
+                        Object v = vs.next();
+                        vals.add(v instanceof byte[]
+                            ? new String((byte[]) v, java.nio.charset.StandardCharsets.UTF_8)
+                            : String.valueOf(v));
+                    }
+                    m.put(at.getID().toLowerCase(), vals);
+                }
+                entries.add(new LdifDriverSource.Entry(sr.getNameInNamespace(), m));
+            }
+            return LdifDriverSource.fromEntries(entries);
+        } catch (Exception e) {
+            throw new RuntimeException("could not read driver config from LDAP: " + e.getMessage(), e);
+        } finally {
+            if (ctx != null) {
+                try {
+                    ctx.close();
+                } catch (Exception ignore) {
+                    // best effort
+                }
+            }
+        }
+    }
+
     private static String readSubschemaDn(LdapContext ctx) throws Exception {
         SearchControls c = new SearchControls();
         c.setSearchScope(SearchControls.OBJECT_SCOPE);

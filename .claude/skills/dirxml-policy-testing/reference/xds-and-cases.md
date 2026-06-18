@@ -172,6 +172,18 @@ ldapsearch -o ldif-wrap=no -b "cn=<DriverSet>,o=system" -s sub "(objectclass=*)"
   DirXML-JavaModule DirXML-DriverFilter DirXML-ShimAuthServer DirXML-ShimAuthID
 ```
 
+Or skip the file and **read the config live from LDAP** — the harness does the
+subtree read for you (requesting those attributes), using the `ldap=` connection:
+
+```properties
+ldap=ldaps://host:636
+ldapBindDn=cn=admin,ou=sa,o=system
+ldapBindPassword=...               # or ldapBindPassword.named=…
+ldapConfig=cn=driverset1,o=system  # the DriverSet DN
+driver=CyberArk
+channel=publisher
+```
+
 The same LDIF (or a separate dump of object entries) can seed sample data via
 `ldif=` — see "Seeding the fake directory from LDIF" above.
 

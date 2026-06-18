@@ -81,14 +81,24 @@ public final class Case {
                 }
                 gcv = project.gcvDefinitions(projectDriver);
             }
-            // Third config source: an LDIF/LDAP export of the live Identity Vault.
+            // Third config source: an LDIF/LDAP export of the live Identity Vault —
+            // an LDIF file (ldifConfig=) or read live from LDAP (ldapConfig=<DriverSetDN>).
             String ldifConfigRef = p.getProperty("ldifConfig");
+            String ldapConfigDn = p.getProperty("ldapConfig");
             LdifDriverSource ldifConfig = null;
             if (export == null && project == null && ldifConfigRef != null && !ldifConfigRef.isBlank()) {
                 ldifConfig = LdifDriverSource.load(caseDir.resolve(ldifConfigRef.trim()));
+            } else if (export == null && project == null && ldapConfigDn != null && !ldapConfigDn.isBlank()) {
+                JndiLdapSearch.Config lc = ldapConfig(p, null);  // literal ldapBindPassword
+                if (lc == null) {
+                    throw new IllegalArgumentException("ldapConfig= requires ldap=<url>");
+                }
+                ldifConfig = new JndiLdapSearch(lc, SchemaModel.empty()).readDriverConfig(ldapConfigDn.trim());
+            }
+            if (ldifConfig != null) {
                 if (projectDriver == null || projectDriver.isBlank()) {
                     throw new IllegalArgumentException(
-                        "ldifConfig= requires driver=<name>; drivers: " + ldifConfig.driverNames());
+                        "ldifConfig=/ldapConfig= requires driver=<name>; drivers: " + ldifConfig.driverNames());
                 }
                 gcv = ldifConfig.gcvDefinitions(projectDriver);
             }
@@ -344,7 +354,7 @@ public final class Case {
             return literal;
         }
         String named = p.getProperty(key + ".named");
-        return named != null ? dir.getNamedPassword(named) : null;
+        return (named != null && dir != null) ? dir.getNamedPassword(named) : null;
     }
 
     // ---- chain.txt parsing ---------------------------------------------------

@@ -75,10 +75,11 @@ public final class LdifDriverSource {
         SET_NAMES.put(PUB_PLACEMENT, "publisher-placement");
     }
 
-    private static final class Entry {
+    /** One directory entry: its DN and attributes (values as text; XML blobs decoded). */
+    public static final class Entry {
         final String dn;
         final Map<String, List<String>> attrs;
-        Entry(String dn, Map<String, List<String>> attrs) {
+        public Entry(String dn, Map<String, List<String>> attrs) {
             this.dn = dn;
             this.attrs = attrs;
         }
@@ -113,8 +114,17 @@ public final class LdifDriverSource {
     }
 
     public static LdifDriverSource parse(String ldif) {
+        return fromEntries(parseEntries(ldif));
+    }
+
+    /**
+     * Build from already-parsed directory entries — used by the live-LDAP path
+     * ({@link JndiLdapSearch#readDriverConfig}) so the same chain-assembly logic
+     * serves both an LDIF file and a live read of the DriverSet subtree.
+     */
+    public static LdifDriverSource fromEntries(List<Entry> entries) {
         LdifDriverSource s = new LdifDriverSource();
-        for (Entry e : parseEntries(ldif)) {
+        for (Entry e : entries) {
             s.byDn.put(e.dn.toLowerCase(), e);
             if (e.hasClass("DirXML-Driver")) {
                 s.driversByName.put(rdnValue(e.dn), e);
