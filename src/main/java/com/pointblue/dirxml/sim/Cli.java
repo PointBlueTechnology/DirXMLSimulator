@@ -46,6 +46,19 @@ public final class Cli {
                 System.exit(3);
             }
         }
+        if (args.length >= 1 && args[0].equals("dbevents")) {
+            if (args.length < 2) {
+                System.err.println("usage: dbevents <caseDir>   "
+                    + "(reads db=/dbUser/dbPassword + event filters from case.properties)");
+                System.exit(2);
+            }
+            try {
+                System.exit(doDbEvents(Paths.get(args[1])));
+            } catch (Exception e) {
+                System.err.println("ERROR: " + e.getMessage());
+                System.exit(3);
+            }
+        }
         if (args.length < 2) {
             usage();
             System.exit(2);
@@ -293,6 +306,90 @@ public final class Cli {
             + (xds.split("<move", -1).length - 1);
     }
 
+    /**
+     * Query the DirXML Event Logger DB and write each matched event as its own
+     * pickable sample under {@code <caseDir>/events/} (a distinct transaction each —
+     * never coalesced), with a listing so you can choose which to run as
+     * {@code input.xds}. Connection + filters come from {@code case.properties}.
+     */
+    private static int doDbEvents(Path caseDir) throws Exception {
+        java.util.Properties p = new java.util.Properties();
+        Path pf = caseDir.resolve("case.properties");
+        if (Files.exists(pf)) {
+            try (var in = Files.newInputStream(pf)) {
+                p.load(in);
+            }
+        }
+        String url = p.getProperty("db");
+        if (url == null || url.isBlank()) {
+            System.err.println("dbevents needs db=jdbc:postgresql://host:port/db in case.properties");
+            return 2;
+        }
+        DbEventReader.Config c = new DbEventReader.Config();
+        c.url = url.trim();
+        c.user = p.getProperty("dbUser");
+        c.password = p.getProperty("dbPassword");
+        if (p.getProperty("dbTable") != null && !p.getProperty("dbTable").isBlank()) {
+            c.table = p.getProperty("dbTable").trim();
+        }
+
+        DbEventReader.Query q = new DbEventReader.Query();
+        q.srcDn = p.getProperty("eventsForDn");
+        q.srcDnLike = p.getProperty("eventsDnLike");
+        q.driver = p.getProperty("eventsDriver");
+        q.eventType = p.getProperty("eventType");
+        q.className = p.getProperty("eventClass");
+        q.since = p.getProperty("eventsSince");
+        q.until = p.getProperty("eventsUntil");
+        q.rawWhere = p.getProperty("eventsWhere");
+        q.limit = Integer.parseInt(p.getProperty("eventLimit", "50"));
+        q.newestFirst = !"asc".equalsIgnoreCase(p.getProperty("eventOrder", "desc"));
+
+        java.util.List<DbEventReader.Event> events = new DbEventReader(c).query(q);
+        if (events.isEmpty()) {
+            System.out.println("no matching events in " + c.table);
+            return 0;
+        }
+        Path dir = caseDir.resolve("events");
+        Files.createDirectories(dir);
+        System.out.println(events.size() + " event(s) — each a distinct transaction; "
+            + "pick one as input.xds:");
+        int i = 0;
+        for (DbEventReader.Event e : events) {
+            i++;
+            String name = String.format("%03d-%s-%s.xds", i, safeName(e.eventType), safeName(rdnOf(e.srcDn)));
+            Files.write(dir.resolve(name), e.xds.getBytes("UTF-8"));
+            System.out.printf("  [%3d] %-7s %-14s %-42s %s%n      -> events/%s%n",
+                i, str(e.eventType), str(e.className), str(e.srcDn), str(e.cachedTime), name);
+        }
+        System.out.println("then e.g.:  cp " + caseDir.resolve("events").resolve("001-…")
+            + "  " + caseDir.resolve("input.xds"));
+        return 0;
+    }
+
+    private static String str(String s) {
+        return s == null ? "" : s;
+    }
+
+    private static String safeName(String s) {
+        if (s == null || s.isBlank()) {
+            return "x";
+        }
+        String out = s.replaceAll("[^A-Za-z0-9._-]", "_");
+        return out.length() > 40 ? out.substring(out.length() - 40) : out;
+    }
+
+    /** Last RDN value of a DN (slash- or comma-delimited) for a filename. */
+    private static String rdnOf(String dn) {
+        if (dn == null || dn.isBlank()) {
+            return "x";
+        }
+        String last = dn.replace('/', '\\');
+        last = last.substring(Math.max(last.lastIndexOf('\\'), last.lastIndexOf(',')) + 1);
+        int eq = last.indexOf('=');
+        return eq >= 0 ? last.substring(eq + 1) : last;
+    }
+
     /** Self-check: JDK, engine jars, and a smoke run of the bundled sample case. */
     private static int doDoctor() {
         boolean ok = true;
@@ -390,6 +487,7 @@ public final class Cli {
         System.err.println("  record <caseDir>             write goldens");
         System.err.println("  extract <traceFile> <outDir> mine a DSTrace log into a case");
         System.err.println("  dxcache <caseDir>            read a driver's event cache (live) into the case");
+        System.err.println("  dbevents <caseDir>           list/pick logged events from the Event Logger DB");
         System.err.println("  doctor                       setup self-check");
     }
 }

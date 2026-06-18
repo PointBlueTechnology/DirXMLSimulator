@@ -71,6 +71,15 @@ stopped driver's **event cache** (its queued, unprocessed transactions):
 events as one `<input>` batch) and `input.xds`. Needs the optional `lib/ldap.jar`
 (see `docs/dxcmd-design.md`).
 
+**Or from the Event Logger DB** — if the DirXML Event Logger is deployed, query its
+PostgreSQL history of real events: `bin/sim dbevents <caseDir>` with `db=`/`dbUser`/
+`dbPassword` + filters (`eventType`, `eventClass`, `eventsForDn`/`eventsDnLike`,
+`eventsDriver`, `eventsSince`/`eventsUntil`, `eventLimit`). **Each logged row is a
+distinct transaction** — it writes one file per event under `events/` and a listing;
+**you pick** which to copy to `input.xds` (don't run them as one batch). Needs the
+optional `lib/postgresql.jar`; see `docs/db-events-design.md`. (Filtering by a
+slash-form DN in a `.properties` file needs `\\` — or use `eventsDnLike=%cn`.)
+
 ## If an input is missing, ask — don't guess or run on empty data
 
 Before running, confirm you have the three things a meaningful test needs: a
@@ -88,7 +97,7 @@ How to recognize each gap and what to request:
 |---|---|---|
 | **Driver config** | no `export=`/`project=`/`ldifConfig=` set, or `No driver '…'` | Which do they have? a Designer **export** (right-click driver → *Export to Configuration File*), a **Designer project** path + driver name, or an **LDIF vault dump** (easiest — covers the whole driver set). |
 | **DirXML attrs in the LDIF** | `ldifConfig=` loads but the chain is empty / `no XmlData` warnings | It was a plain `ldapsearch *`, which omits them. Re-export **requesting the DirXML attributes**: `'*' XmlData DirXML-Policies DirXML-ShimConfigInfo DirXML-ConfigValues DirXML-JavaModule DirXML-DriverFilter` (full command in [reference/xds-and-cases.md](reference/xds-and-cases.md)). |
-| **Input event** | no `input.xds`, or you'd be authoring it blind | A **DSTrace** of the real transaction (then `bin/sim extract`); or — with a live connection — a **stopped** driver's event cache (`bin/sim dxcache`); or a precise description (operation, class, key attributes) so you can author one. |
+| **Input event** | no `input.xds`, or you'd be authoring it blind | A **DSTrace** of the real transaction (then `bin/sim extract`); or — with a live connection — a **stopped** driver's event cache (`bin/sim dxcache`) or the **Event Logger DB** (`bin/sim dbevents`, then pick one); or a precise description (operation, class, key attributes) so you can author one. |
 | **Seed / directory data** | a `<query>` returns no `<instance>` and a value then goes missing downstream | The object(s) the policy looks up — a **trace** (carries the directory's real answers), an **LDIF dump** of those objects (`ldif=`), or the specific attribute values to hand-seed `directory.xds`. |
 | **A named password** | `WARNING: named password(s) … not supplied` | The secret value — intentionally absent from exports; set `namedPassword.<name>=…`. Treat as sensitive. |
 | **A GCV value** | a GCV resolves empty / the policy behaves as if it's unset | The value (or a `gcv.xml` override); a stale value may mean they need a fresher export. |
@@ -127,6 +136,7 @@ bin/sim test   <caseDir>             # diff vs expected-*.xds; exit 0 pass, 1 mi
 bin/sim record <caseDir>             # write expected-output.xds / expected-directory.xds
 bin/sim extract <trace> <outDir>     # mine a DSTrace log into a case (input + directory + samples)
 bin/sim dxcache <caseDir>            # read a stopped driver's event cache (live) into the case
+bin/sim dbevents <caseDir>          # list/pick logged events from the Event Logger DB
 bin/sim doctor                       # setup self-check
 ```
 

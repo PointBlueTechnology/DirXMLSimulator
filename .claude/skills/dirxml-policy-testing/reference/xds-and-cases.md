@@ -88,6 +88,34 @@ the command reports its state and reads nothing (stop it first). Uses DxCMD's LD
 extended operations and needs the optional `lib/ldap.jar` (Novell LDAP SDK); see
 `docs/dxcmd-design.md`.
 
+## Input events from the Event Logger DB (optional)
+
+If the **DirXML Event Logger** is deployed, query its PostgreSQL history of real
+events instead of mining a trace:
+
+```properties
+# case.properties
+db=jdbc:postgresql://host:5432/idmEvent
+dbUser=postgres
+dbPassword=…
+# filters (all optional):
+eventType=modify        eventClass=User
+eventsDnLike=%jdoe                    # srcdn LIKE (no backslash escaping)
+eventsForDn=\\TREE\\data\\users\\jdoe # exact DN — needs \\ in a .properties file
+eventsDriver=cn=CyberArk,cn=driverset1,o=system
+eventsSince=2026-06-01   eventsUntil=2026-06-30   eventLimit=50   eventOrder=desc
+eventsWhere=<raw SQL>                 # power-user escape hatch (e.g. a jsonb test)
+```
+
+```
+bin/sim dbevents <caseDir>
+```
+
+**Each logged row is a distinct transaction.** It writes one file per event under
+`events/NNN-<type>-<cn>.xds` and prints a listing — then **you copy the one you
+want** to `input.xds` (they are deliberately not merged into one batch). Needs the
+optional `lib/postgresql.jar` (open-source); see `docs/db-events-design.md`.
+
 ## Seeding the fake directory from LDIF (optional)
 
 Instead of hand-writing `directory.xds`, point a case at an **LDIF** dump of real
