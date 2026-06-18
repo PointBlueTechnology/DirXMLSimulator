@@ -41,6 +41,10 @@ policy, and re-run in a loop.
   `bin/sim dxcache` reads a **stopped** driver's event cache (its queued subscriber
   transactions) straight into a case, as an alternative to mining a trace. Uses
   DxCMD's LDAP extended ops; needs the optional `lib/ldap.jar`.
+- **Real input events from the Event Logger DB** — `bin/sim dbevents` queries a
+  **DirXML Event Logger** PostgreSQL history (by DN, driver, type, time) and writes
+  each logged transaction as a pickable sample. Needs the optional (open-source)
+  `lib/postgresql.jar`.
 - **Golden tests** — compare final output (and directory end-state) against
   recorded goldens; non-zero exit on mismatch.
 

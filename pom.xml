@@ -94,6 +94,16 @@
             <scope>system</scope>
             <systemPath>${project.basedir}/lib/ldap.jar</systemPath>
         </dependency>
+        <dependency>
+            <!-- PostgreSQL JDBC (open-source, BSD) — only for the EventLogger DB
+                 event source (bin/sim dbevents). Freely downloadable from Maven
+                 Central; staged in lib/ like the others for the bin/sim classpath. -->
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.7.7</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/postgresql.jar</systemPath>
+        </dependency>
 
         <dependency>
             <groupId>junit</groupId>
@@ -136,7 +146,7 @@
                             <!-- Both layouts: dev build (jar in target/, lib in ../lib)
                                  and flat release distribution (jar + lib/ side by side).
                                  Java ignores Class-Path entries that don't exist. -->
-                            <Class-Path>lib/dirxml.jar lib/dirxml_misc.jar lib/nxsl.jar lib/xp.jar lib/CommonDriverShim.jar lib/jclient.jar lib/dhutil.jar lib/XDS.jar lib/js.jar lib/ldap.jar ../lib/dirxml.jar ../lib/dirxml_misc.jar ../lib/nxsl.jar ../lib/xp.jar ../lib/CommonDriverShim.jar ../lib/jclient.jar ../lib/dhutil.jar ../lib/XDS.jar ../lib/js.jar ../lib/ldap.jar</Class-Path>
+                            <Class-Path>lib/dirxml.jar lib/dirxml_misc.jar lib/nxsl.jar lib/xp.jar lib/CommonDriverShim.jar lib/jclient.jar lib/dhutil.jar lib/XDS.jar lib/js.jar lib/ldap.jar lib/postgresql.jar ../lib/dirxml.jar ../lib/dirxml_misc.jar ../lib/nxsl.jar ../lib/xp.jar ../lib/CommonDriverShim.jar ../lib/jclient.jar ../lib/dhutil.jar ../lib/XDS.jar ../lib/js.jar ../lib/ldap.jar ../lib/postgresql.jar</Class-Path>
                         </manifestEntries>
                     </archive>
                 </configuration>

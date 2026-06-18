@@ -24,6 +24,7 @@ bin/sim test   <caseDir>             diff vs goldens; exit 0 pass, 1 mismatch
 bin/sim record <caseDir>             write expected-output.xds / expected-directory.xds
 bin/sim extract <trace> <outDir>     mine a DSTrace log into a case
 bin/sim dxcache <caseDir>            read a stopped driver's event cache (live) into the case
+bin/sim dbevents <caseDir>          list/pick logged events from the Event Logger DB
 bin/sim doctor                       setup self-check
 ```
 
