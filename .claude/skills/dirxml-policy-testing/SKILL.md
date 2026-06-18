@@ -87,7 +87,7 @@ How to recognize each gap and what to request:
 | **A GCV value** | a GCV resolves empty / the policy behaves as if it's unset | The value (or a `gcv.xml` override); a stale value may mean they need a fresher export. |
 | **A Java extension class** | `WARNING: Java extension classes not on the classpath` | The jar that defines it, to stage in `lib/`. |
 | **An `es:` function** | a stage `[ERROR]` "function not found" | The ECMAScript resource (from the export/project, or a `.js` for `ecmascript/`). |
-| **Schema** (validation) | schema warnings never fire / you can't catch typos | A `project=` or `schema=<*_schema.xml or project dir>` so unknown classes/attributes are flagged. |
+| **Schema** (validation) | schema warnings never fire / you can't catch typos | A `project=`, a `schema=<*_schema.xml or project dir>`, or — with a live connection — `schema=ldap` (reads the eDir subschema directly, no project). |
 | **(Shim testing)** shim jar / app auth | `shim=` load error, or the shim's auth fails | The connector jar (`shimJar=`, stage in `lib/`) and the app password (`shimAuthPassword.named=`). |
 
 ## The loop

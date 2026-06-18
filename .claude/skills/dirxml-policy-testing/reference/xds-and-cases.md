@@ -177,11 +177,19 @@ The same LDIF (or a separate dump of object entries) can seed sample data via
 
 ## Schema validation
 
-When a schema is available — automatically with `project=`, or explicitly via
-`schema=<*_schema.xml or project dir>` — the harness validates `input.xds` and
-`directory.xds` against it and warns on: an unknown class, an attribute not in the
-schema (a typo), an attribute not valid for its class, or multiple values on a
-single-valued attribute. This catches mistakes when you hand-author inputs.
+When a schema is available — automatically with `project=`, explicitly via
+`schema=<*_schema.xml or project dir>`, or **read live from LDAP** (`schema=ldap`,
+or automatically whenever `ldap=` is set and no other schema is supplied) — the
+harness validates `input.xds` and `directory.xds` against it and warns on: an
+unknown class, an attribute not in the schema (a typo), an attribute not valid for
+its class, or multiple values on a single-valued attribute. This catches mistakes
+when you hand-author inputs.
+
+Reading from LDAP parses the eDir subschema (`cn=schema`): it recovers the true
+NDS/DirXML name from each definition's `X-NDS_NAME` extension (falling back to the
+LDAP name) and maps the syntax OID to the eDir `syn=` the value normalizer uses —
+so it's a full equivalent of a Designer `*_schema.xml`, no project needed. A
+schema-read failure is non-fatal (warns; validation just doesn't run).
 
 ## Driving a real driver shim (optional)
 
