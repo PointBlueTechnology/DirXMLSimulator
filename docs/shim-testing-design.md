@@ -223,18 +223,22 @@ run byte-for-byte unchanged.
 Secrets stay in the named-password channel; shim jars stay in `lib/`/gitignored
 like the engine jars. No proprietary artifacts enter source control.
 
-## Build order
+## Build order — status
 
-1. `LdapValueNormalizer` + unit tests (offline, no shim/LDAP needed). ← start here
-2. `InitDocBuilder` + unit tests (offline).
-3. `LdapQueryProcessor` (name-mapping/response-build unit-tested with a stub
-   search; live-LDAP path behind config).
-4. `ShimAdapter` + CLI/case wiring; validate against a real shim jar
-   (Delimited Text / Loopback first, then ClaimsCenter against a sandbox).
+All four steps are **implemented and committed** (82 tests green):
 
-Steps 1–2 are fully testable here and now. Steps 3–4 need the proprietary shim
-jar and a live/sandbox target to validate end-to-end, so they land behind config
-and are exercised against a real environment.
+1. ✅ `LdapValueNormalizer` + 17 tests (offline).
+2. ✅ `InitDocBuilder` + `ShimConfig` + extractors (`DriverExport.shimConfig()`,
+   `DesignerProject.shimConfig()`) + 14 tests (offline).
+3. ✅ `LdapQueryProcessor` (+7 tests with a stub search) and the live
+   `JndiLdapSearch`/`TrustAllSocketFactory` behind config.
+4. ✅ `ShimAdapter` (+7 tests via a stub `DriverShim`) and `Case`/`ChannelSimulator`
+   wiring (+3 end-to-end tests via a stub shim through a real case).
+
+The remaining work is **not code** — it is end-to-end validation against a real
+shim jar and a live/sandbox target (Delimited Text / Loopback first, then a REST
+connector like ClaimsCenter against a sandbox). Everything lands behind config and
+is inert until a case opts in.
 
 ## Non-goals / fidelity gaps
 
