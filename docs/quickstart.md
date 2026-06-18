@@ -50,22 +50,24 @@ the directory's answer, and the rule trace — the value `Surname=Doe` flowing f
 the fake directory into a `CopiedSurname` attribute. That's the whole loop in
 miniature.
 
-## 3. Run your own driver from a trace + export
+## 3. Run your own driver on real events
 
 ### a. Get the artifacts
 
 - **Driver config** — any one of:
-  - an **LDIF/LDAP export of the live vault** (easiest — one dump carries the
-    policy chain, GCVs, filter, and shim params for the *whole driver set*, and
-    can seed the directory too; see [3c](#c-point-the-case-at-the-driver-config)),
+  - the **live vault over LDAP**, or an **LDIF export** of it (easiest — one
+    source carries the policy chain, GCVs, filter, and shim params for the *whole
+    driver set*, and live LDAP also gives you the schema and query answers; see
+    [3c](#c-point-the-case-at-the-driver-config)),
   - a **driver export** (`.xml` from Designer → *Export to Configuration File*),
   - a **Designer project** on disk (your `designer_workspace` project + driver
     name) — also carries the schema, so inputs get validated.
-- **Directory data + an input event** — a DSTrace / driver trace log from your
-  environment (turn trace up, reproduce the event, save the log) **or** an LDIF
-  dump of the relevant objects. With a live connection you can also pull a
-  **stopped driver's event cache** (its queued subscriber events) directly with
-  `bin/sim dxcache` — see step (e).
+- **An input event** — a DSTrace / driver trace log (turn trace up, reproduce the
+  event, save the log) is the classic source. But with a live environment you have
+  two better ones: a **stopped driver's event cache** (`bin/sim dxcache`, step e),
+  or — best of all — the **Event Logger database** (`bin/sim dbevents`, step f), a
+  searchable history of real events. Directory data (the answers to the policies'
+  queries) comes from the trace, an LDIF dump, or live LDAP.
 
 ### b. Bootstrap a case from the trace
 
@@ -114,9 +116,27 @@ channel=publisher
 driverDN=\TREE\system\driverset\MyDriver
 ```
 
+**or** read the config **live from LDAP** — no file at all; the harness pulls the
+driver subtree straight from the running vault:
+
+```properties
+ldap=ldaps://host:636
+ldapBindDn=cn=admin,ou=sa,o=system
+ldapBindPassword=...
+ldapConfig=cn=driverset1,o=system    # the DriverSet DN to read
+driver=CyberArk
+channel=publisher
+schema=ldap                          # also read the eDir schema live (validates inputs)
+```
+
 Any of them assembles your real channel chain (in IDM policy-set order) and loads
 the driver's GCVs and ECMAScript resources. With `project=` it also loads the
-**schema** and validates `input.xds`/`directory.xds` against it.
+**schema** and validates `input.xds`/`directory.xds` against it. With a live `ldap=`
+connection you get more for free: `schema=ldap` reads the eDirectory schema
+directly (no project needed), and the policies' queries can be answered from **live
+eDirectory** instead of `directory.xds`. (TLS cert validation is off by default —
+test directories use self-signed certs; set `ldapTrustAll=false` to require a valid
+cert.)
 
 > **Producing the LDIF** — a plain `ldapsearch *` omits the DirXML policy/config
 > attributes, so request them explicitly:
@@ -166,6 +186,71 @@ wrote input.xds (the cached events as one <input> batch)
 It writes the real pending events as `input.xds`. A **running** driver is detected
 and reported (stop it first). Needs the optional `lib/ldap.jar` (Novell LDAP SDK).
 
+### f. (Best input source) pick real events from the Event Logger DB
+
+The richest source of test inputs is the **[DirXML Event Logger](https://github.com/jcombs-pointblue/DirXMLEventLogger)** —
+a small subscriber-channel driver that records *every* event passing through a
+driver set to a PostgreSQL table, keeping the original XDS next to searchable
+metadata. If it's deployed in your environment, you have a standing library of real
+production events to test against.
+
+**Why this is the option to reach for:**
+
+- **It's real production traffic, already captured.** No turning trace levels up, no
+  reproducing an event, no hand-authoring — the exact documents the engine processed
+  are sitting in a table, with their real attributes, associations, and metadata.
+- **It's a persistent, searchable history.** Unlike a trace (one capture) or the
+  driver cache (the transient pending queue, gone after the driver drains it), the
+  log accumulates. You can pull an event from months ago.
+- **It's precisely selectable.** Query by object **DN**, **driver**, **event type**,
+  **class**, or **time range** — "the last 10 modify events on this user," "every
+  add the AD driver saw last week," "that one delete that broke production."
+- **It builds regression corpora for free.** Pull a representative set of real
+  events, save them as goldens, and prove a policy change is safe against actual
+  traffic — not contrived inputs.
+- **It's ideal during driver development.** Develop policies against the real events
+  your driver is already seeing, iterate, and re-run.
+
+Point a case at the database and filter:
+
+```properties
+# case.properties — connection + filters
+db=jdbc:postgresql://host:5432/idmEvent
+dbUser=postgres
+dbPassword=...
+# pick what you want (all optional):
+eventType=modify              # add | modify | delete | sync | rename | move
+eventClass=User
+eventsDnLike=%jdoe            # match srcdn (no backslash escaping)
+# eventsForDn=\\TREE\\data\\users\\jdoe   # exact DN — note the doubled backslashes
+eventsDriver=cn=CyberArk,cn=driverset1,o=system
+eventsSince=2026-06-01        # eventsUntil=…   eventLimit=50   eventOrder=desc
+# eventsWhere=<raw SQL>       # power user: e.g. a jsonb predicate on eventjson
+```
+
+```bash
+$ bin/sim dbevents cases/my-test
+8 event(s) — each a distinct transaction; pick one as input.xds:
+  [  1] modify  User  \IDM_IG4_TREE\data\jdoe   2026-06-05 15:26:43   -> events/001-modify-jdoe.xds
+  [  2] modify  User  \IDM_IG4_TREE\data\asmith 2026-05-21 09:39:06   -> events/002-modify-asmith.xds
+  ...
+```
+
+**Each logged row is its own transaction**, so `dbevents` writes one file per event
+under `events/` and lists them — it never merges them into one batch (that would
+run distinct events as a single shared operation). You stay in control: pick the
+one you want and make it the input —
+
+```bash
+$ cp cases/my-test/events/001-modify-jdoe.xds cases/my-test/input.xds
+$ bin/sim step cases/my-test
+```
+
+No jar to stage: the open-source PostgreSQL JDBC driver is fetched by Maven on
+build and bundled in releases. (The Postgres password is the **database** password,
+which is typically *not* your eDirectory password.) See
+[docs/db-events-design.md](db-events-design.md) for the table schema and all filters.
+
 ## 4. Test a change
 
 Lock in the current behavior as a golden, edit the policy, and verify:
@@ -184,6 +269,7 @@ Use `test` to prove a fix does what you intend and nothing else regresses.
 bin/sim run    <caseDir> [--trace]   run the chain; final output (+ full trace)
 bin/sim step   <caseDir> [--rules]   per-stage (or per-rule) input/output/queries/trace
 bin/sim dxcache <caseDir>            read a stopped driver's event cache (live) into the case
+bin/sim dbevents <caseDir>           list/pick logged events from the Event Logger DB
 bin/sim test   <caseDir>             diff vs goldens; exit 0 pass, 1 mismatch
 bin/sim record <caseDir>             write expected-output.xds / expected-directory.xds
 bin/sim extract <trace> <outDir>     mine a DSTrace log into a case
