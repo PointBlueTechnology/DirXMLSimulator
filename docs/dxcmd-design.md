@@ -59,18 +59,56 @@ Validated against a live server: read **22 queued events** from a stopped
 `cn=Active Directory Driver,cn=driverset1,o=system` in ~0.25 s — real `<modify>`
 operations on User objects — and bootstrapped a runnable case from them.
 
-## Phase 2 — submit to the live engine (not built)
+## Phase 2 — submit to the live engine (DEFERRED — build-ready blueprint)
 
-`SubmitEventRequest`/`SubmitCommandRequest` (+ responses) send an XDS document to a
-**running** driver and return the engine's real output. Use as a **fidelity check**:
-run the case headlessly, submit the same input to the real engine, and diff. High
-value, but with real caveats:
+**Status: deferred by request (2026-06-18). Not built. This section is the complete
+blueprint so it can be picked up later without re-investigating.**
 
-- the driver must be **running**, and the submit genuinely **executes** through the
-  engine — real side effects on the connected app. Must be pointed at a test driver,
-  with confirm-before-submit guardrails.
-- best surfaced as a distinct, explicit mode (e.g. `bin/sim verify-vs-engine`), never
-  automatic.
+Send an XDS document to a **running** driver and get the engine's real output — a
+**fidelity check**: run the case headlessly, submit the same input to the real
+engine, and diff the two.
+
+### Protocol (verified from `DxCommand.submitXDS`)
+
+Same chunked-result mechanism as the cache read, just a different request. Mirror
+`DxCommand.submitXDS(driverDN, fileData, version)`:
+
+```
+version 0 (command) → SubmitCommandRequest(driverDN, 1, fileData)   // subscriber-channel command
+version 1 (event)   → SubmitEventRequest(driverDN, 1, fileData)     // publisher-channel event
+  → response is a ChunkedResultResponseBase: getDataHandle(), getDataSize()
+  → if handle==0 || size==0 ⇒ no result document
+  → else pull with GetChunkedResultRequest / CloseChunkedResultRequest (reuse
+    DxCacheReader.getChunkedResult) → the engine's response XDS
+```
+
+`fileData` is the XDS document bytes (UTF-8). Register the typed responses first
+(`SubmitCommandResponse.register()` / `SubmitEventResponse.register()`,
+`GetChunkedResultResponse.register()`), exactly like the cache reader. OIDs:
+SubmitCommand=30, SubmitEvent (see `DirXMLExtensions`). All classes are in
+`dirxml_misc`; the only dependency is the same `lib/ldap.jar`.
+
+### Implementation sketch
+
+- A `DxEngineSubmit` class alongside `DxCacheReader` (reuse `connect()`,
+  `getChunkedResult()`, the trust-all manager, and the `GetDriverState` check).
+- Direction → version: subscriber command = 0, publisher event = 1 (match the
+  case's `channel=`).
+
+### Required guardrails (the reason it's gated)
+
+- The driver must be **running** (state 2) — the inverse of the cache read; check
+  `GetDriverState` and refuse with a clear message otherwise.
+- Submit **genuinely executes** through the engine — real side effects on the
+  connected application. So:
+  - **explicit, never automatic** — a distinct verb (e.g. `bin/sim submit <caseDir>`
+    or a `verify-vs-engine` mode), never part of `run`/`test`;
+  - **confirm before submit** (interactive confirm or an explicit
+    `iUnderstandThisHitsTheRealApp=true` case key);
+  - intended for a **test driver**, not production;
+  - document loudly that it is not a dry run.
+- Surface the engine's response next to the headless output for a diff (the payoff:
+  proves the simulator matches — or finds where it diverges from — the real engine).
 
 ## Constraints / notes
 
