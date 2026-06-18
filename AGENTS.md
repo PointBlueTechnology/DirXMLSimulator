@@ -30,13 +30,20 @@ bin/sim doctor                       setup self-check
 
 1. **Get inputs** — `bin/sim extract <trace> <caseDir>` mines a production DSTrace
    log into a runnable case (real input event + directory state), or hand-author a
-   case directory.
-2. **Point at the driver** — set `export=<driver.xml>` and `channel=publisher|subscriber`
-   in `<caseDir>/case.properties`; the harness assembles the real chain and loads
-   GCVs + ECMAScript resources.
+   case directory. No trace? Seed the fake directory from an LDIF dump with
+   `ldif=<file>` in `case.properties`.
+2. **Point at the driver** — set the chain source in `<caseDir>/case.properties`
+   and `channel=publisher|subscriber`. Three sources: `export=<driver.xml>`, a
+   Designer `project=<dir>`+`driver=<name>`, or — often easiest — an
+   `ldifConfig=<vault.ldif>`+`driver=<name>` (one live-vault LDIF dump carries the
+   whole driver set's policies, GCVs, filter, and shim params). The harness
+   assembles the real chain and loads GCVs + ECMAScript resources.
 3. **Diagnose** — `bin/sim step <caseDir>` (add `--rules`) to find the stage/rule
    where a value first appears, gets vetoed, or comes out wrong; read its trace.
 4. **Verify a change** — `bin/sim record` a golden, edit the policy, `bin/sim test`.
+5. **(Optional) production fidelity** — `shim=true` drives the real connector with
+   the chain's output; `ldap=ldaps://…` answers queries from live eDir. Off unless
+   set. See the skill's `reference/xds-and-cases.md`.
 
 ## Full instructions
 

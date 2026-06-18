@@ -54,10 +54,15 @@ bin/sim extract <traceFile> <outDir>
 This writes `input.xds` (the real input event), `directory.xds` (instances the
 directory actually returned, so the policy's lookups resolve), a
 `case.properties` stub with the channel inferred, and `trace-samples/` (every
-document the trace carried, labeled by channel + kind). Then set `export=` in
-`case.properties` and `step` it. See
+document the trace carried, labeled by channel + kind). Then set a config source
+(`export=`/`project=`/`ldifConfig=`) in `case.properties` and `step` it. See
 [reference/traces.md](reference/traces.md) for the trace format, what each
 document marker means, and how to read the rule trace to debug.
+
+**No trace?** Seed the fake directory from an **LDIF dump** instead: add
+`ldif=objects.ldif` and the harness loads those entries as `<instance>` state
+(names mapped via the schema, values normalized by syntax). Good for realistic
+data at scale when you don't have a per-transaction trace.
 
 ## The loop
 
@@ -161,11 +166,15 @@ cases/<name>/
 of exports — same idea as a GCV; referenced names you don't supply resolve to empty
 and are warned); `fakeActions` (default `true`); `restResponse=<body>` (or
 `restResponse.<urlSubstring>=<body>`, or a `rest-response.json` file) to supply the
-canned body a faked `do-invoke-rest-endpoint` returns; and `schema=<*_schema.xml or
+canned body a faked `do-invoke-rest-endpoint` returns; `schema=<*_schema.xml or
 Designer project dir>` to validate `input.xds`/`directory.xds` against the eDir
-schema (auto-loaded when `project=` is set).
+schema (auto-loaded when `project=` is set); and `ldif=<file>` to seed the fake
+directory from an LDIF dump (in addition to / instead of `directory.xds`). The
+chain-source keys (`export=`/`project=`/`ldifConfig=`) and the optional `shim=`/
+`ldap=` keys are covered under "ways to define the chain" below and in
+[reference/xds-and-cases.md](reference/xds-and-cases.md).
 
-Three ways to define the chain:
+Four ways to define the chain:
 - **Explicit** — `chain.txt`, one stage per line in channel order.
 - **From a driver export** — set in `case.properties`:
   ```
@@ -190,9 +199,29 @@ Three ways to define the chain:
   (`*_DirXML-ConfigValues.xml`), **ECMAScript resources**, and **schema** (which an
   export omits). The on-disk Designer format is mapped by the companion
   `dirxml-designer-workspace` skill.
+- **From an LDIF/LDAP export of the live vault** — often the easiest: one subtree
+  dump carries the whole driver set's policies, GCVs, filter, and shim params.
+  ```
+  ldifConfig=/path/to/IDM_subtree.ldif
+  driver=CyberArk
+  channel=subscriber
+  ```
+  The harness reads the `DirXML-Driver`'s `DirXML-Policies` linkage and each
+  referenced policy's `XmlData`. **The LDIF must include the DirXML data
+  attributes** — a plain `ldapsearch *` omits them; request `XmlData
+  DirXML-Policies DirXML-ShimConfigInfo DirXML-ConfigValues DirXML-JavaModule
+  DirXML-DriverFilter` explicitly (full command in
+  [reference/xds-and-cases.md](reference/xds-and-cases.md)).
 
-With `filter=true` (export or project) a leading filter stage drops the
+With `filter=true` (export, project, or LDIF) a leading filter stage drops the
 classes/attributes the driver filter ignores on that channel (off by default).
+
+**Optional, opt-in (off by default):** drive the **real connector** as a command
+sink (`shim=true`, defaults the class from the config; a terminal `shim` snapshot
+shows the connector's response) and/or answer queries from **live eDirectory**
+(`ldap=ldaps://host:636`, …). Both are documented in
+[reference/xds-and-cases.md](reference/xds-and-cases.md); neither changes behavior
+unless configured.
 
 ## Authoring inputs, directory state, and reading output
 

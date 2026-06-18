@@ -27,11 +27,16 @@ policy, and re-run in a loop.
   queries/commands it issued.
 - **In-memory fake directory** — answers the queries a policy makes
   (`token-query`, `do-find-matching-object`, source/dest attribute reads) from
-  loaded `<instance>` state, and absorbs write-back commands.
-- **Reads driver exports** — point at a Designer "Export Driver Configuration"
-  file and the harness assembles the actual subscriber/publisher chain in IDM
-  policy-set order (event → matching → create → placement → command → schema
-  mapping → output transform, etc.).
+  loaded `<instance>` state, and absorbs write-back commands. Seed it from
+  hand-authored `<instance>` XDS, a mined trace, or an **LDIF dump** of your vault.
+- **Three driver-config sources** — assemble the actual subscriber/publisher chain
+  (IDM policy-set order: event → matching → create → placement → command → schema
+  mapping → output transform) from a **Designer export**, a **Designer project**,
+  or an **LDIF/LDAP export of the live Identity Vault** (one subtree dump carries
+  the policies, GCVs, filter, and shim params for the whole driver set).
+- **Optional production-fidelity checks** — hand the chain's final command to the
+  **real driver shim** to confirm it consumes the policy output, and/or answer
+  queries from **live eDirectory over LDAP**. Both opt-in; off by default.
 - **Golden tests** — compare final output (and directory end-state) against
   recorded goldens; non-zero exit on mismatch.
 
@@ -154,7 +159,7 @@ bin/sim record <caseDir>             # write expected-output.xds / expected-dire
 
 ```
 cases/<name>/
-  case.properties        # driverDN, dnFormat, fromNDS, traceLevel; OR export=..,channel=..
+  case.properties        # driverDN, dnFormat, fromNDS, traceLevel; OR a config source (below)
   chain.txt              # ordered stages: "stageName = policy.xml" per line
   input.xds              # the operation to run
   directory.xds          # optional: initial fake-directory state (<instance> set)
@@ -163,13 +168,23 @@ cases/<name>/
   expected-directory.xds # optional golden: directory end-state
 ```
 
-To drive the chain from a real driver export instead of `chain.txt`, set in
-`case.properties`:
+To drive the chain from a real driver instead of `chain.txt`, set one config
+source in `case.properties` (with `channel=publisher|subscriber`):
 
 ```
-export=../../MyDriver.xml
-channel=publisher        # or subscriber
+export=../../MyDriver.xml                       # a Designer driver export
+# project=/path/to/designer_workspace + driver=MyDriver   # a Designer project
+# ldifConfig=/path/to/IDM_subtree.ldif + driver=MyDriver  # a live-vault LDIF export
 ```
+
+An **LDIF/LDAP export of the live vault** is often easiest — one subtree dump
+carries the whole driver set's policies, GCVs, filter, and shim params, and can
+also seed the fake directory (`ldif=that-file.ldif`). The LDIF must include the
+DirXML data attributes (a plain `ldapsearch *` omits them); the
+[skill reference](.claude/skills/dirxml-policy-testing/reference/xds-and-cases.md)
+gives the exact `ldapsearch` command. Optional, opt-in: `shim=true` drives the
+real connector with the chain's output; `ldap=ldaps://…` answers queries from live
+eDir.
 
 ## Layout
 
@@ -179,6 +194,12 @@ channel=publisher        # or subscriber
 - `PolicyLoader` / `PolicyStage` — load a `<policy>`/`<style-sheet>`/`<attr-name-map>`
   and wrap it as a channel stage.
 - `FakeDirectory` — in-memory directory implementing the query/command seams.
-- `ChannelSimulator` — drives an ordered stage list, capturing `StageSnapshot`s.
-- `DriverExport` — assembles channel chains from a Designer driver export.
+- `ChannelSimulator` — drives an ordered stage list, capturing `StageSnapshot`s;
+  optional live-LDAP query source and real-shim command sink.
+- `DriverExport` / `DesignerProject` / `LdifDriverSource` — assemble channel chains
+  from a driver export, a Designer project, or a live-vault LDIF export.
+- `LdifReader` — seed the fake directory from an LDIF dump.
+- `LdapValueNormalizer` / `LdapQueryProcessor` / `JndiLdapSearch` — map LDAP↔native
+  XDS by schema syntax; answer queries from live eDir.
+- `ShimAdapter` / `InitDocBuilder` / `ShimConfig` — drive a real driver shim.
 - `Case` / `XmlCompare` / `Cli` — the case model, golden compare, and CLI.
