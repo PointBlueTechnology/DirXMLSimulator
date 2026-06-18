@@ -135,6 +135,50 @@ When a schema is available — automatically with `project=`, or explicitly via
 schema (a typo), an attribute not valid for its class, or multiple values on a
 single-valued attribute. This catches mistakes when you hand-author inputs.
 
+## Driving a real driver shim (optional)
+
+Normally the chain ends at its final command and the fake directory accepts
+anything. To validate that the command your policies built is actually consumable
+by the connector, drive the **real shim** as a terminal command sink. Both this
+and the live-LDAP option below are opt-in — absent keys mean today's behavior.
+
+```properties
+# case.properties — run the connector after the chain
+shim=true
+shimClass=com.acme.MyDriverShim     # optional; defaults to the export/project java-module
+shimJar=lib/MyShim.jar              # optional extra jar(s), comma-separated; keep out of git
+shimInit=shim-init.xml              # optional explicit <init-params>; else synthesized from the source
+shimAuthPassword.named=app-secret   # or shimAuthPassword=<literal>
+```
+
+The init-params doc is built from where the driver already defines it — the
+export's `<java-module>`/option blocks or the project's `DirXML-JavaModule`/
+`DirXML-ShimConfigInfo` — so you usually only add `shim=true` (plus the secret).
+A new **`shim`** snapshot is appended: its INPUT is the chain's final command, its
+OUTPUT is the shim's real status/association response. Subscriber direction only.
+
+The shim runs in-process, so pure-Java connectors work (REST/SCIM/SOAP/JDBC/
+Delimited Text/Loopback); native shims (AD-local, eDir) do not.
+
+## Answering queries from live eDirectory (optional)
+
+Instead of seeding `directory.xds`, answer the chain's (and the shim's) queries
+from a live eDir over LDAP. Values are normalized to native XDS form by each
+attribute's schema syntax, so a schema must be available (use `project=` or
+`schema=`).
+
+```properties
+ldap=ldaps://host:636
+ldapBindDn=cn=admin,ou=sa,o=system
+ldapBindPassword.named=ldap-bind     # or ldapBindPassword=<literal>
+ldapSearchBase=o=data
+ldapTrustAll=true                    # ldaps with an internal CA (test only)
+ldapDnTree=ACME-TREE                 # tree name for slash-form DN values
+```
+
+Use `ldap=` with or without `shim=`. With a shim, the shim's back-channel queries
+go to LDAP too; without one, only the policy chain's queries do.
+
 ## GCV definitions (`gcv.xml`)
 
 If you supply GCVs by hand, each `<definition>` **must** have a `display-name`
