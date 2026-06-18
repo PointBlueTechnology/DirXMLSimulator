@@ -7,4 +7,8 @@ build, copy them here from an IDM install or your IDM Driver Dependencies set:
     CommonDriverShim.jar  jclient.jar  dhutil.jar  XDS.jar
     js.jar      (repackaged Rhino — needed for ECMAScript es: functions)
 
+Optional (only for the DxCMD features — reading a driver's event cache, etc.):
+
+    ldap.jar    (Novell/OpenText JLDAP SDK, com.novell.ldap — ships with IDM/Designer)
+
 The engine jars (dirxml*, 4.10.1) are Java 21 bytecode — build and run on JDK 21.

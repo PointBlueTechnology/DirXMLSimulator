@@ -25,3 +25,4 @@ cases/proj-gcv/
 # Local live-LDAP test connections (contain a test credential)
 cases/ldap-live/
 cases/ldap-driver/
+cases/ad-cache/

@@ -64,6 +64,13 @@ document marker means, and how to read the rule trace to debug.
 (names mapped via the schema, values normalized by syntax). Good for realistic
 data at scale when you don't have a per-transaction trace.
 
+**Real subscriber events without a trace** — if you have a live connection, read a
+stopped driver's **event cache** (its queued, unprocessed transactions):
+`bin/sim dxcache <caseDir>` with `ldap=`/`ldapBindDn`/`ldapBindPassword` +
+`cacheDriver=<driverDN>` in `case.properties`. It writes `cache.xds` (all queued
+events as one `<input>` batch) and `input.xds`. Needs the optional `lib/ldap.jar`
+(see `docs/dxcmd-design.md`).
+
 ## If an input is missing, ask — don't guess or run on empty data
 
 Before running, confirm you have the three things a meaningful test needs: a
@@ -119,6 +126,7 @@ bin/sim step   <caseDir> [--rules]   # per-stage (or with --rules, per-rule) i/o
 bin/sim test   <caseDir>             # diff vs expected-*.xds; exit 0 pass, 1 mismatch
 bin/sim record <caseDir>             # write expected-output.xds / expected-directory.xds
 bin/sim extract <trace> <outDir>     # mine a DSTrace log into a case (input + directory + samples)
+bin/sim dxcache <caseDir>            # read a stopped driver's event cache (live) into the case
 bin/sim doctor                       # setup self-check
 ```
 
