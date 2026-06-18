@@ -81,6 +81,17 @@ public final class Case {
                 }
                 gcv = project.gcvDefinitions(projectDriver);
             }
+            // Third config source: an LDIF/LDAP export of the live Identity Vault.
+            String ldifConfigRef = p.getProperty("ldifConfig");
+            LdifDriverSource ldifConfig = null;
+            if (export == null && project == null && ldifConfigRef != null && !ldifConfigRef.isBlank()) {
+                ldifConfig = LdifDriverSource.load(caseDir.resolve(ldifConfigRef.trim()));
+                if (projectDriver == null || projectDriver.isBlank()) {
+                    throw new IllegalArgumentException(
+                        "ldifConfig= requires driver=<name>; drivers: " + ldifConfig.driverNames());
+                }
+                gcv = ldifConfig.gcvDefinitions(projectDriver);
+            }
             // A case-local gcv.xml overlays/overrides the export GCVs.
             Path gcvFile = caseDir.resolve("gcv.xml");
             if (Files.exists(gcvFile)) {
@@ -122,6 +133,9 @@ public final class Case {
             if (project != null) {
                 ecma.addAll(project.ecmaScriptSources());
             }
+            if (ldifConfig != null) {
+                ecma.addAll(ldifConfig.ecmaScriptSources());
+            }
             Path ecmaDir = caseDir.resolve("ecmascript");
             if (Files.isDirectory(ecmaDir)) {
                 try (var paths = Files.list(ecmaDir)) {
@@ -160,6 +174,13 @@ public final class Case {
                 sim.addAll(publisher
                     ? project.publisherChain(projectDriver, ctx)
                     : project.subscriberChain(projectDriver, ctx));
+            } else if (ldifConfig != null) {
+                if (wantFilter && ldifConfig.filter(projectDriver) != null) {
+                    sim.add(PolicyStage.filter("filter", ldifConfig.filter(projectDriver), publisher));
+                }
+                sim.addAll(publisher
+                    ? ldifConfig.publisherChain(projectDriver, ctx)
+                    : ldifConfig.subscriberChain(projectDriver, ctx));
             } else {
                 for (Stage s : readChain(caseDir)) {
                     sim.add(PolicyStage.fromFile(s.name, caseDir.resolve(s.policyPath), ctx));
@@ -193,7 +214,7 @@ public final class Case {
 
             // Optional, opt-in: a live-LDAP query source and/or a real shim command
             // sink. Absent keys ⇒ the chain runs against FakeDirectory, as before.
-            wireShimAndLdap(p, caseDir, export, project, projectDriver, directory, schema, sim);
+            wireShimAndLdap(p, caseDir, export, project, ldifConfig, projectDriver, directory, schema, sim);
 
             Path expOut = caseDir.resolve("expected-output.xds");
             Path expDir = caseDir.resolve("expected-directory.xds");
@@ -229,8 +250,8 @@ public final class Case {
      * </pre>
      */
     private static void wireShimAndLdap(Properties p, Path caseDir, DriverExport export,
-            DesignerProject project, String projectDriver, FakeDirectory directory,
-            SchemaModel schema, ChannelSimulator sim) {
+            DesignerProject project, LdifDriverSource ldifConfig, String projectDriver,
+            FakeDirectory directory, SchemaModel schema, ChannelSimulator sim) {
         // --- live-LDAP query source (optional) ---
         LdapQueryProcessor ldapQp = null;
         String ldapUrl = p.getProperty("ldap");
@@ -252,7 +273,8 @@ public final class Case {
             return;
         }
         ShimConfig cfg = export != null ? export.shimConfig()
-            : project != null ? project.shimConfig(projectDriver) : null;
+            : project != null ? project.shimConfig(projectDriver)
+            : ldifConfig != null ? ldifConfig.shimConfig(projectDriver) : null;
         String shimClass = p.getProperty("shimClass", cfg != null ? cfg.shimClass : null);
         if (shimClass == null || shimClass.isBlank()) {
             throw new IllegalArgumentException("shim=true needs a shim class: set shimClass=, "

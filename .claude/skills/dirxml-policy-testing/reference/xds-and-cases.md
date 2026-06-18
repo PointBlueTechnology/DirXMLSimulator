@@ -144,6 +144,37 @@ companion `dirxml-designer-workspace` skill.
 (You can also point a single chain stage at one real policy file directly —
 Designer stores each policy as a clean `<policy>` in `Model/.../<id>_contents.xml`.)
 
+### LDIF/LDAP export of the live Identity Vault
+
+A third source: an LDIF dump (or live-LDAP export) of the eDir DriverSet subtree.
+
+```
+# case.properties
+ldifConfig=IDM_subtree.ldif
+driver=CyberArk
+channel=publisher
+```
+
+The harness reads the `DirXML-Driver` object's `DirXML-Policies` linkage
+(`<policyDN>#<order>#<setId>`, the same set ids as an export), each referenced
+`DirXML-Rule`/`DirXML-StyleSheet`'s `XmlData` policy content, and the
+`DirXML-JavaModule`/`DirXML-ShimConfigInfo`/`DirXML-ConfigValues`/
+`DirXML-DriverFilter` attributes (shim params, GCVs, filter). A policy whose
+content the engine rejects (an unresolved map-table/resource reference, etc.) is
+skipped with a warning rather than failing the chain.
+
+**The export must include the DirXML data attributes** — a plain `ldapsearch *`
+omits them. Request them explicitly, e.g.:
+
+```
+ldapsearch -o ldif-wrap=no -b "cn=<DriverSet>,o=system" -s sub "(objectclass=*)" \
+  '*' XmlData DirXML-Policies DirXML-ShimConfigInfo DirXML-ConfigValues \
+  DirXML-JavaModule DirXML-DriverFilter DirXML-ShimAuthServer DirXML-ShimAuthID
+```
+
+The same LDIF (or a separate dump of object entries) can seed sample data via
+`ldif=` — see "Seeding the fake directory from LDIF" above.
+
 ## Schema validation
 
 When a schema is available — automatically with `project=`, or explicitly via
