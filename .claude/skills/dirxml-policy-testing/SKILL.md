@@ -227,15 +227,24 @@ Four ways to define the chain:
   (`*_DirXML-ConfigValues.xml`), **ECMAScript resources**, and **schema** (which an
   export omits). The on-disk Designer format is mapped by the companion
   `dirxml-designer-workspace` skill.
-- **From an LDIF/LDAP export of the live vault** — often the easiest: one subtree
-  dump carries the whole driver set's policies, GCVs, filter, and shim params.
+- **From an LDIF export, or read live from LDAP** — often the easiest: the driver
+  set's policies, GCVs, filter, and shim params come from one subtree.
   ```
-  ldifConfig=/path/to/IDM_subtree.ldif
+  ldifConfig=/path/to/IDM_subtree.ldif    # an LDIF file
   driver=CyberArk
   channel=subscriber
   ```
-  The harness reads the `DirXML-Driver`'s `DirXML-Policies` linkage and each
-  referenced policy's `XmlData`. **The LDIF must include the DirXML data
+  or read it **directly from the live vault** (uses the `ldap=` connection):
+  ```
+  ldap=ldaps://host:636
+  ldapBindDn=cn=admin,ou=sa,o=system
+  ldapBindPassword=...
+  ldapConfig=cn=driverset1,o=system       # the DriverSet DN to read
+  driver=CyberArk
+  channel=subscriber
+  ```
+  Either way the harness reads the `DirXML-Driver`'s `DirXML-Policies` linkage and
+  each referenced policy's `XmlData`. **The LDIF must include the DirXML data
   attributes** — a plain `ldapsearch *` omits them; request `XmlData
   DirXML-Policies DirXML-ShimConfigInfo DirXML-ConfigValues DirXML-JavaModule
   DirXML-DriverFilter` explicitly (full command in
