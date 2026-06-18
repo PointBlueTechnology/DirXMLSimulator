@@ -62,6 +62,32 @@ Direct reads by `dest-dn`/`src-dn` or `<association>` are supported. Commands th
 policy emits (`add`/`modify`/`delete`) mutate the directory, so matching→merge and
 create→read sequences behave realistically.
 
+## Input events from a driver's event cache (optional)
+
+With a live connection you can pull a **stopped** driver's **event cache** — its
+queued, unprocessed subscriber transactions — straight into a case, instead of
+mining a trace or hand-authoring `input.xds`:
+
+```properties
+# case.properties
+ldap=ldaps://host:636
+ldapBindDn=cn=admin,ou=sa,o=system
+ldapBindPassword=...                 # or ldapBindPassword.named=…
+cacheDriver=cn=MyDriver,cn=driverset1,o=system
+# cacheCount=100   cacheToken=0      # optional: page size / start token
+```
+
+```
+bin/sim dxcache <caseDir>
+```
+
+It writes `cache.xds` (all queued events as one `<nds><input>` batch, carrying the
+engine's real `cached-time`/`event-id`/`src-dn` metadata) and `input.xds` (if
+absent). The driver must be **stopped** — a running one is draining its cache, so
+the command reports its state and reads nothing (stop it first). Uses DxCMD's LDAP
+extended operations and needs the optional `lib/ldap.jar` (Novell LDAP SDK); see
+`docs/dxcmd-design.md`.
+
 ## Seeding the fake directory from LDIF (optional)
 
 Instead of hand-writing `directory.xds`, point a case at an **LDIF** dump of real

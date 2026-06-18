@@ -63,7 +63,9 @@ miniature.
     name) — also carries the schema, so inputs get validated.
 - **Directory data + an input event** — a DSTrace / driver trace log from your
   environment (turn trace up, reproduce the event, save the log) **or** an LDIF
-  dump of the relevant objects.
+  dump of the relevant objects. With a live connection you can also pull a
+  **stopped driver's event cache** (its queued subscriber events) directly with
+  `bin/sim dxcache` — see step (e).
 
 ### b. Bootstrap a case from the trace
 
@@ -142,6 +144,28 @@ $ bin/sim step cases/my-test --rules
 Find the stage (or rule) where a value first appears, gets vetoed, or comes out
 wrong — and read that stage's trace to see why.
 
+### e. (Alternative input) pull a stopped driver's event cache
+
+No trace? If the driver is **stopped** and you have a live connection, read its
+queued subscriber events directly into the case:
+
+```properties
+# case.properties — connection + the driver whose cache to read
+ldap=ldaps://host:636
+ldapBindDn=cn=admin,ou=sa,o=system
+ldapBindPassword=...
+cacheDriver=cn=MyDriver,cn=driverset1,o=system
+```
+
+```bash
+$ bin/sim dxcache cases/my-test
+wrote cases/my-test/cache.xds  (22 cached events, …)
+wrote input.xds (the cached events as one <input> batch)
+```
+
+It writes the real pending events as `input.xds`. A **running** driver is detected
+and reported (stop it first). Needs the optional `lib/ldap.jar` (Novell LDAP SDK).
+
 ## 4. Test a change
 
 Lock in the current behavior as a golden, edit the policy, and verify:
@@ -159,6 +183,7 @@ Use `test` to prove a fix does what you intend and nothing else regresses.
 ```
 bin/sim run    <caseDir> [--trace]   run the chain; final output (+ full trace)
 bin/sim step   <caseDir> [--rules]   per-stage (or per-rule) input/output/queries/trace
+bin/sim dxcache <caseDir>            read a stopped driver's event cache (live) into the case
 bin/sim test   <caseDir>             diff vs goldens; exit 0 pass, 1 mismatch
 bin/sim record <caseDir>             write expected-output.xds / expected-directory.xds
 bin/sim extract <trace> <outDir>     mine a DSTrace log into a case
