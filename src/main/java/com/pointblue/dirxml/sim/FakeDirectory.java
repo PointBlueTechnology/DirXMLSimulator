@@ -131,6 +131,11 @@ public final class FakeDirectory implements XdsQueryProcessor, XdsCommandProcess
         return namedPasswords.keySet();
     }
 
+    /** A configured named-password value, or null. Lets shim/LDAP auth reuse the secret channel. */
+    public String getNamedPassword(String name) {
+        return namedPasswords.get(name);
+    }
+
     @Override
     public Document query(Document queryDoc) {
         // get-named-password is a control query (token-named-password) — answer from

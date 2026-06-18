@@ -1,5 +1,6 @@
 package com.pointblue.dirxml.sim;
 
+import com.novell.nds.dirxml.engine.XdsQueryProcessor;
 import com.novell.nds.dirxml.engine.gcv.GCDefinitions;
 
 import org.w3c.dom.Document;
@@ -182,6 +183,10 @@ public final class Case {
                 schemaWarnings.addAll(schema.validate(Xds.parseFile(dirFile)));
             }
 
+            // Optional, opt-in: a live-LDAP query source and/or a real shim command
+            // sink. Absent keys ⇒ the chain runs against FakeDirectory, as before.
+            wireShimAndLdap(p, caseDir, export, project, projectDriver, directory, schema, sim);
+
             Path expOut = caseDir.resolve("expected-output.xds");
             Path expDir = caseDir.resolve("expected-directory.xds");
             return new Case(caseDir, ctx, directory, sim, input, expOut, expDir, schemaWarnings);
@@ -192,6 +197,97 @@ public final class Case {
 
     public ChannelSimulator.Result run() {
         return sim.run(input);
+    }
+
+    /**
+     * Wire the optional live-LDAP query source and/or real-shim command sink from
+     * {@code case.properties}. Both are independent and opt-in; with neither set
+     * this is a no-op and the chain runs against the {@link FakeDirectory}.
+     *
+     * <pre>
+     *   ldap=ldaps://host:636        # answer queries from live eDir (else directory.xds)
+     *   ldapBindDn=cn=admin,o=system
+     *   ldapBindPassword.named=ldap-bind   # or ldapBindPassword=<literal>
+     *   ldapSearchBase=o=data
+     *   ldapTrustAll=true            # ldaps with an internal CA
+     *   ldapAssocPrefix=...          # prefix on the DirXML-Associations filter
+     *   ldapDnTree=ACME-TREE         # tree name for slash-form DN values
+     *
+     *   shim=true                    # drive the real connector as command sink
+     *   shimClass=...                # defaults to the export/project java-module
+     *   shimJar=lib/RestShim.jar     # extra jar(s), comma-separated; gitignored
+     *   shimInit=shim-init.xml       # explicit init-params, else synthesized from the source
+     *   shimAuthPassword.named=app   # or shimAuthPassword=<literal>
+     * </pre>
+     */
+    private static void wireShimAndLdap(Properties p, Path caseDir, DriverExport export,
+            DesignerProject project, String projectDriver, FakeDirectory directory,
+            SchemaModel schema, ChannelSimulator sim) {
+        // --- live-LDAP query source (optional) ---
+        LdapQueryProcessor ldapQp = null;
+        String ldapUrl = p.getProperty("ldap");
+        if (ldapUrl != null && !ldapUrl.isBlank()) {
+            JndiLdapSearch.Config lc = new JndiLdapSearch.Config();
+            lc.url = ldapUrl.trim();
+            lc.bindDn = p.getProperty("ldapBindDn");
+            lc.bindPassword = resolveSecret(p, directory, "ldapBindPassword");
+            lc.trustAllCerts = Boolean.parseBoolean(p.getProperty("ldapTrustAll", "false"));
+            ldapQp = new LdapQueryProcessor(
+                new JndiLdapSearch(lc, schema), schema,
+                new LdapValueNormalizer(p.getProperty("ldapDnTree")),
+                p.getProperty("ldapSearchBase", ""), p.getProperty("ldapAssocPrefix", ""));
+            sim.withQuerySource(ldapQp);
+        }
+
+        // --- real shim as command sink (optional) ---
+        if (!Boolean.parseBoolean(p.getProperty("shim", "false"))) {
+            return;
+        }
+        ShimConfig cfg = export != null ? export.shimConfig()
+            : project != null ? project.shimConfig(projectDriver) : null;
+        String shimClass = p.getProperty("shimClass", cfg != null ? cfg.shimClass : null);
+        if (shimClass == null || shimClass.isBlank()) {
+            throw new IllegalArgumentException("shim=true needs a shim class: set shimClass=, "
+                + "or use an export/project that names one (java-module / DirXML-JavaModule)");
+        }
+        String password = resolveSecret(p, directory, "shimAuthPassword");
+
+        Document initDoc;
+        String shimInit = p.getProperty("shimInit");
+        if (shimInit != null && !shimInit.isBlank()) {
+            initDoc = Xds.parseFile(caseDir.resolve(shimInit.trim()));
+        } else {
+            InitDocBuilder b = new InitDocBuilder();
+            if (cfg != null) {
+                b.shimConfig(cfg, password);
+            } else {
+                b.authentication(p.getProperty("shimAuthServer"), p.getProperty("shimAuthId"), password);
+            }
+            initDoc = b.build();
+        }
+
+        List<Path> jars = new ArrayList<>();
+        String shimJar = p.getProperty("shimJar");
+        if (shimJar != null) {
+            for (String j : shimJar.split(",")) {
+                if (!j.isBlank()) {
+                    jars.add(caseDir.resolve(j.trim()));
+                }
+            }
+        }
+        XdsQueryProcessor backChannel = ldapQp != null ? ldapQp : directory;
+        sim.withCommandSink(ShimAdapter.create(
+            shimClass, ShimAdapter.classLoaderFor(jars), initDoc, backChannel));
+    }
+
+    /** A secret from {@code <key>=<literal>} or {@code <key>.named=<namedPassword>}. */
+    private static String resolveSecret(Properties p, FakeDirectory dir, String key) {
+        String literal = p.getProperty(key);
+        if (literal != null) {
+            return literal;
+        }
+        String named = p.getProperty(key + ".named");
+        return named != null ? dir.getNamedPassword(named) : null;
     }
 
     // ---- chain.txt parsing ---------------------------------------------------
