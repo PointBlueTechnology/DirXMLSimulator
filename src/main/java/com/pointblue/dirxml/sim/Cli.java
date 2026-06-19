@@ -11,6 +11,7 @@ import java.nio.file.Paths;
  *   run    &lt;caseDir&gt; [--trace]   run the chain, print final output (+ trace)
  *   step   &lt;caseDir&gt;            print each stage: input/output/changed/queries/trace
  *   test   &lt;caseDir&gt;            run and diff vs expected-*.xds; exit !=0 on mismatch
+ *   test-all &lt;dir&gt;             run every case under dir; summary + CI reports; exit !=0 on any fail
  *   record &lt;caseDir&gt;            run and write expected-output.xds / expected-directory.xds
  * </pre>
  */
@@ -54,6 +55,19 @@ public final class Cli {
             }
             try {
                 System.exit(doDbEvents(Paths.get(args[1])));
+            } catch (Exception e) {
+                System.err.println("ERROR: " + e.getMessage());
+                System.exit(3);
+            }
+        }
+        if (args.length >= 1 && args[0].equals("test-all")) {
+            if (args.length < 2) {
+                System.err.println("usage: test-all <dir> [--junit <file>] [--json <file>]");
+                System.exit(2);
+            }
+            try {
+                System.exit(doTestAll(Paths.get(args[1]),
+                    flagValue(args, "--junit"), flagValue(args, "--json")));
             } catch (Exception e) {
                 System.err.println("ERROR: " + e.getMessage());
                 System.exit(3);
@@ -219,6 +233,33 @@ public final class Cli {
 
         System.out.println(ok ? "RESULT: PASS" : "RESULT: FAIL");
         return ok ? 0 : 1;
+    }
+
+    /**
+     * Run every case under {@code dir} as a golden test (the batch counterpart to
+     * {@code test}); print a per-case summary, optionally write JUnit / JSON
+     * reports, and exit non-zero if any case FAILed or ERRORed.
+     */
+    private static int doTestAll(Path dir, String junitFile, String jsonFile) throws Exception {
+        if (!Files.isDirectory(dir)) {
+            System.err.println("ERROR: not a directory: " + dir);
+            return 2;
+        }
+        var results = BatchRunner.runAll(dir);
+        if (results.isEmpty()) {
+            System.out.println("no cases found under " + dir + " (a case is a dir with input.xds)");
+            return 0;
+        }
+        System.out.println(BatchRunner.summary(results));
+        if (junitFile != null) {
+            write(Paths.get(junitFile), BatchRunner.toJunit(results, "dirxml-sim:" + dir));
+            System.out.println("wrote " + junitFile);
+        }
+        if (jsonFile != null) {
+            write(Paths.get(jsonFile), BatchRunner.toJson(results));
+            System.out.println("wrote " + jsonFile);
+        }
+        return BatchRunner.anyFailed(results) ? 1 : 0;
     }
 
     private static int doRecord(Path caseDir) {
@@ -458,6 +499,16 @@ public final class Cli {
         return false;
     }
 
+    /** Value of a {@code --flag <value>} option, or null if absent. */
+    private static String flagValue(String[] args, String flag) {
+        for (int i = 0; i < args.length - 1; i++) {
+            if (args[i].equals(flag)) {
+                return args[i + 1];
+            }
+        }
+        return null;
+    }
+
     /** Light pretty-print: newline between adjacent tags. Good enough for reading. */
     private static String pretty(String xml) {
         return xml.replaceAll(">\\s*<", ">\n<");
@@ -484,6 +535,7 @@ public final class Cli {
         System.err.println("  run    <caseDir> [--trace]   run chain, print final output (+ trace)");
         System.err.println("  step   <caseDir> [--rules]   per-stage (or per-rule) input/output/queries/trace");
         System.err.println("  test   <caseDir>             diff vs expected-*.xds; exit !=0 on mismatch");
+        System.err.println("  test-all <dir> [--junit f] [--json f]  run every case; CI summary + exit code");
         System.err.println("  record <caseDir>             write goldens");
         System.err.println("  extract <traceFile> <outDir> mine a DSTrace log into a case");
         System.err.println("  dxcache <caseDir>            read a driver's event cache (live) into the case");

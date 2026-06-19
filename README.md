@@ -171,8 +171,14 @@ In every case the agent still needs the **built harness reachable** (JDK 21,
 bin/sim run    <caseDir> [--trace]   # run chain, print final output (+ trace)
 bin/sim step   <caseDir>             # per-stage input/output/queries/trace
 bin/sim test   <caseDir>             # diff vs expected-*.xds; exit !=0 on mismatch
+bin/sim test-all <dir> [--junit f] [--json f]  # run every case under <dir>; CI summary + exit code
 bin/sim record <caseDir>             # write expected-output.xds / expected-directory.xds
 ```
+
+`test-all` discovers every case (a directory with an `input.xds`) under `<dir>`,
+runs each as `test` does, prints a PASS/FAIL/ERROR/SKIP summary, and exits non-zero
+if anything failed — point CI at it, optionally writing JUnit (`--junit`) or JSON
+(`--json`) reports.
 
 ### Case layout
 
