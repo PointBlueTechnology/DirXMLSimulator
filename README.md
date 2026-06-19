@@ -15,6 +15,11 @@ policy, and re-run in a loop.
 > what an agent can do with this, how you provide an export and traces, and
 > example asks. Then [docs/quickstart.md](docs/quickstart.md) walks you from
 > setup to stepping your own driver.
+>
+> **Developing a driver shim?** See
+> [docs/shim-dev-workflow.md](docs/shim-dev-workflow.md) for testing your shim
+> from its own IntelliJ project, with the simulator and test cases in separate
+> repos.
 
 ![An agent running the copy-surname sample case: the harness drives the real IDM engine, queries the in-memory fake directory, and copies Surname into a new CopiedSurname attribute.](docs/sample-case.png)
 
@@ -199,6 +204,10 @@ DirXML data attributes (a plain `ldapsearch *` omits them); the
 gives the exact `ldapsearch` command. Optional, opt-in: `shim=true` drives the
 real connector with the chain's output; `ldap=ldaps://…` answers queries from live
 eDir.
+
+Developing the shim itself in its own IntelliJ project? Keep the two repos
+separate and the test cases in the shim repo, pointing `shimJar=` at its live
+build output — see [docs/shim-dev-workflow.md](docs/shim-dev-workflow.md).
 
 ## Layout
 
