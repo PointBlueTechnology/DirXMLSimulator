@@ -204,6 +204,7 @@ cases/<name>/
   expected-output.xds    # golden (written by `record`)
   expected-directory.xds # optional golden: directory end-state
   expected.assertions    # optional XPath assertions on the final output (alt/complement to a golden)
+  mapping-tables/        # optional <TableName>.xml mapping tables for Map tokens (also auto-extracted from an export/LDIF)
 ```
 
 To drive the chain from a real driver instead of `chain.txt`, set one config
@@ -244,4 +245,7 @@ build output — see [docs/shim-dev-workflow.md](docs/shim-dev-workflow.md).
 - `LdapValueNormalizer` / `LdapQueryProcessor` / `JndiLdapSearch` — map LDAP↔native
   XDS by schema syntax; answer queries from live eDir.
 - `ShimAdapter` / `InitDocBuilder` / `ShimConfig` — drive a real driver shim.
+- `MappingTableSource` / `MappingTableStore` / `NdsStreamProtocol` — resolve `Map`
+  token tables offline (case `mapping-tables/` dir or export/LDIF resources) via a
+  `vnd.nds.stream:` URL handler.
 - `Case` / `XmlCompare` / `Cli` — the case model, golden compare, and CLI.

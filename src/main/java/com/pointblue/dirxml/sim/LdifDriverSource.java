@@ -306,6 +306,31 @@ public final class LdifDriverSource {
         return out;
     }
 
+    /** Mapping tables from DirXML-Resource entries (cn -&gt; &lt;mapping-table&gt; XML). */
+    public java.util.Map<String, String> mappingTables() {
+        java.util.Map<String, String> out = new LinkedHashMap<>();
+        for (Entry e : byDn.values()) {
+            if (!e.hasClass("DirXML-Resource")) {
+                continue;
+            }
+            String xml = e.first("XmlData");
+            if (xml == null || !xml.contains("<mapping-table")) {
+                continue;
+            }
+            try {
+                Element root = Xds.parse(xml).getDocumentElement();
+                Element table = "mapping-table".equals(root.getLocalName())
+                    ? root : Xds.descendantsByName(root, "mapping-table").stream().findFirst().orElse(null);
+                if (table != null) {
+                    out.put(rdnValue(e.dn), Xds.serializeElement(table));
+                }
+            } catch (Exception ignore) {
+                // not a parseable mapping-table resource
+            }
+        }
+        return out;
+    }
+
     // ---- helpers --------------------------------------------------------
 
     private Entry driver(String name) {

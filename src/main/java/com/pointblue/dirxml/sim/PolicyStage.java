@@ -121,6 +121,29 @@ public final class PolicyStage {
         return out;
     }
 
+    /**
+     * If a DirXML Script policy uses a {@code Map} token, give its element a
+     * synthetic {@code vnd.nds.stream:} base URI so the engine resolves the token's
+     * relative table reference to a URL our handler serves from the local
+     * {@link MappingTableStore} (see {@code docs/mapping-tables-design.md}). Scoped
+     * to Map-using policies so it never changes resolution for any other policy. The
+     * exact base value is irrelevant — tables resolve by name — so a fixed,
+     * deep-enough path suffices.
+     */
+    private static void maybeEnableMappingTables(Element policy) {
+        if (Xds.descendantsByName(policy, "token-map").isEmpty()) {
+            return;
+        }
+        NdsStreamProtocol.ensureInstalled();
+        try {
+            ((com.novell.xml.dom.NodeImpl) policy)
+                .setBaseURI("vnd.nds.stream://sim/dirxml/driverset/driver/policy");
+        } catch (Throwable ignored) {
+            // Non-Novell DOM or no setter — the token will simply fail to resolve,
+            // surfacing the usual missing-table diagnostic.
+        }
+    }
+
     private static String ruleDescription(Element rule) {
         List<Element> d = Xds.childrenByName(rule, "description");
         if (d.isEmpty()) {
@@ -150,6 +173,7 @@ public final class PolicyStage {
                         forProc = Xds.parse(Xds.serializeElement(policy)).getDocumentElement();
                         FakeActions.rewrite(forProc, ctx.fakeConfig());
                     }
+                    maybeEnableMappingTables(forProc);
                     proc = new DirXMLScriptProcessor(forProc, ctx.staticContext());
                     break;
                 case "style-sheet":
@@ -162,6 +186,7 @@ public final class PolicyStage {
                     break;
                 default:
                     // Default to DirXML Script; most authored policies are <policy>.
+                    maybeEnableMappingTables(policy);
                     proc = new DirXMLScriptProcessor(policy, ctx.staticContext());
                     type = "policy";
             }

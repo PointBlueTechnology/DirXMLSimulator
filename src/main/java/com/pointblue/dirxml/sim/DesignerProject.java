@@ -195,6 +195,16 @@ public final class DesignerProject {
     }
 
     /**
+     * Mapping tables embedded in the project. v1 returns none — supply them via a
+     * case-local {@code mapping-tables/} dir (always honored). Extracting from
+     * project resource files is a follow-up (needs a project with one to confirm
+     * the on-disk shape).
+     */
+    public Map<String, String> mappingTables() {
+        return new LinkedHashMap<>();
+    }
+
+    /**
      * The shim init parameters defined in the driver's Designer object: the shim
      * class ({@code DirXML-JavaModule}), auth endpoint/id ({@code DirXML-ShimAuthServer}
      * / {@code DirXML-ShimAuthID}), and the driver/subscriber/publisher option

@@ -203,6 +203,11 @@ public final class DriverExport {
         return out;
     }
 
+    /** Mapping tables embedded as library resources (name -&gt; &lt;mapping-table&gt; XML). */
+    public java.util.Map<String, String> mappingTables() {
+        return MappingTableSource.fromElement(root);
+    }
+
     private static List<Element> allDescendants(Node ctx, String localName) {
         List<Element> out = new ArrayList<>();
         NodeList kids = ctx.getChildNodes();
