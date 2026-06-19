@@ -195,13 +195,37 @@ public final class DesignerProject {
     }
 
     /**
-     * Mapping tables embedded in the project. v1 returns none — supply them via a
-     * case-local {@code mapping-tables/} dir (always honored). Extracting from
-     * project resource files is a follow-up (needs a project with one to confirm
-     * the on-disk shape).
+     * Mapping tables from the project's {@code .MappingTableResource_} objects:
+     * the meta CObject's {@code name=} keys the table; its {@code _contents.xml} is
+     * the {@code <mapping-table>} XML.
      */
     public Map<String, String> mappingTables() {
-        return new LinkedHashMap<>();
+        Map<String, String> out = new LinkedHashMap<>();
+        for (Map.Entry<String, Path> e : contentsById.entrySet()) {
+            Path meta = metaById.get(e.getKey());
+            if (meta == null || !meta.getFileName().toString().endsWith(".MappingTableResource_")) {
+                continue;
+            }
+            try {
+                String content = new String(Files.readAllBytes(e.getValue()), "UTF-8");
+                if (!content.contains("<mapping-table")) {
+                    continue;
+                }
+                String name = Xds.parseFile(meta).getDocumentElement().getAttribute("name");
+                if (name == null || name.isBlank()) {
+                    continue;
+                }
+                Element root = Xds.parse(content).getDocumentElement();
+                Element table = "mapping-table".equals(root.getLocalName())
+                    ? root : Xds.descendantsByName(root, "mapping-table").stream().findFirst().orElse(null);
+                if (table != null) {
+                    out.put(name, Xds.serializeElement(table));
+                }
+            } catch (Exception ignore) {
+                // skip an unreadable/unparseable resource
+            }
+        }
+        return out;
     }
 
     /**
