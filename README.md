@@ -178,7 +178,11 @@ bin/sim record <caseDir>             # write expected-output.xds / expected-dire
 `test-all` discovers every case (a directory with an `input.xds`) under `<dir>`,
 runs each as `test` does, prints a PASS/FAIL/ERROR/SKIP summary, and exits non-zero
 if anything failed — point CI at it, optionally writing JUnit (`--junit`) or JSON
-(`--json`) reports.
+(`--json`) reports. `bin/sim harvest <configDir> <outDir>` mints that corpus
+automatically by replaying real Event Logger DB events through your current
+policies and snapshotting the output as goldens. See
+**[docs/regression-testing.md](docs/regression-testing.md)** for the full
+regression + CI/CD workflow (with a GitHub Actions example).
 
 ### Case layout
 

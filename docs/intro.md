@@ -49,7 +49,12 @@ can:
   schema file, or read **live from eDirectory** — so typo'd classes/attributes are
   caught before they mislead you.
 - **Test a change and prove it's safe** — capture the current correct output as a
-  golden, make the policy edit, and re-run to confirm nothing regressed.
+  golden, make the policy edit, and re-run to confirm nothing regressed. Scale it
+  from one event to a whole **regression corpus**: `harvest` replays hundreds of
+  real Event Logger events through your current policies to mint goldens
+  automatically, and `test-all` re-runs them as a **CI gate** — so a policy change
+  gets the same safety net as application code (see
+  [regression-testing.md](regression-testing.md)).
 - **Validate against the real connector** — optionally hand the policies' final
   command to the **actual driver shim** to confirm it consumes what your policies
   produced (REST/SCIM/SOAP/JDBC and other pure-Java connectors).

@@ -325,6 +325,29 @@ $ bin/sim test cases/my-test            # exit 0 = unchanged, 1 = changed (with 
 
 Use `test` to prove a fix does what you intend and nothing else regresses.
 
+## 5. Test a whole corpus (and gate CI)
+
+One case is a spot check; a directory of cases is a regression suite:
+
+```bash
+$ bin/sim test-all cases/regression --junit target/sim.xml   # exit !=0 if any FAIL/ERROR
+```
+
+And you don't have to author the corpus by hand — `harvest` builds it from real
+events: replay the last N Event Logger DB transactions through your current
+policies and snapshot each output as a golden.
+
+```bash
+$ bin/sim harvest harvest-config/ cases/regression   # config has db= + a config source
+$ bin/sim test-all cases/regression                  # baseline: all PASS
+# ... edit a policy ...
+$ bin/sim test-all cases/regression                  # every changed event now FAILs, with diffs
+```
+
+This is what lets a driver's policies get a real CI gate. See
+**[regression-testing.md](regression-testing.md)** for the full workflow, the
+change-detector-not-correctness-oracle caveat, and a GitHub Actions example.
+
 ## Command reference
 
 ```
@@ -333,6 +356,8 @@ bin/sim step   <caseDir> [--rules]   per-stage (or per-rule) input/output/querie
 bin/sim dxcache <caseDir>            read a stopped driver's event cache (live) into the case
 bin/sim dbevents <caseDir>           list/pick logged events from the Event Logger DB
 bin/sim test   <caseDir>             diff vs goldens; exit 0 pass, 1 mismatch
+bin/sim test-all <dir> [--junit f] [--json f]  run every case under <dir>; CI summary + exit code
+bin/sim harvest <configDir> <outDir> [--refresh]  mint a regression corpus from real events
 bin/sim record <caseDir>             write expected-output.xds / expected-directory.xds
 bin/sim extract <trace> <outDir>     mine a DSTrace log into a case
 bin/sim doctor                       setup self-check

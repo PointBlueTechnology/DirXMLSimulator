@@ -138,6 +138,7 @@ bin/sim record <caseDir>             # write expected-output.xds / expected-dire
 bin/sim extract <trace> <outDir>     # mine a DSTrace log into a case (input + directory + samples)
 bin/sim dxcache <caseDir>            # read a stopped driver's event cache (live) into the case
 bin/sim dbevents <caseDir>          # list/pick logged events from the Event Logger DB
+bin/sim harvest <configDir> <outDir> [--refresh]  # mint a regression corpus from real DB events
 bin/sim doctor                       # setup self-check
 ```
 
@@ -145,6 +146,10 @@ bin/sim doctor                       # setup self-check
 golden once the output looks right with `record`, then `test` guards regressions.
 `test-all` is the same signal over a whole corpus — run it after a policy edit to
 see every case that changed; it exits non-zero if any case FAILs or ERRORs.
+`harvest` builds that corpus from real Event Logger DB events (one case per event,
+current output captured as the golden) — a regression baseline from production
+traffic; goldens are *current* behavior (a change detector, not a correctness
+oracle). Full workflow + CI/CD: `docs/regression-testing.md`.
 
 ## What each command prints (so you can interpret it without a trial run)
 
