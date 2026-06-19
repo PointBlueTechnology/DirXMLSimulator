@@ -10,6 +10,14 @@ directories**, while the **test artifacts (input events and reference/golden
 data) live in the shim project's own repo**. The harness supports this directly;
 no special build integration is needed.
 
+> **IDE-agnostic.** This guide is written with IntelliJ in mind (it's the common
+> case for a Java shim), but nothing here is IntelliJ-specific. Any editor or IDE
+> with a Claude Code integration — VS Code, a JetBrains IDE, or the `claude` CLI
+> run from the shim project — works the same way. The only IDE-dependent detail is
+> the build-output path you point `shimJar=` at: `target/classes` for Maven,
+> `build/classes/java/main` for Gradle, `out/production/<module>` for IntelliJ's
+> own compiler. Pick the one your build produces.
+
 ## Why it just works
 
 Two existing mechanics make the separation clean:
