@@ -49,6 +49,26 @@ public final class PolicyStage {
         return "policy".equals(type);
     }
 
+    /** The names of the {@code <rule>}s in this policy (empty for non-DirXMLScript stages). */
+    public List<String> ruleNames() {
+        if (source == null || !isDirXMLScript()) {
+            return Collections.emptyList();
+        }
+        List<String> names = new java.util.ArrayList<>();
+        for (Element rule : Xds.childrenByName(source, "rule")) {
+            // The engine's trace names a rule by its @name, else its <description>
+            // (the form hand-authored sample policies use). Match that here so the
+            // defined-rule names line up with the fired names in the trace.
+            String n = rule.getAttribute("name");
+            if (n == null || n.isBlank()) {
+                List<Element> d = Xds.childrenByName(rule, "description");
+                n = d.isEmpty() ? "" : Xds.text(d.get(0)).trim();
+            }
+            names.add(n.isBlank() ? "(unnamed)" : n);
+        }
+        return names;
+    }
+
     /** Java extension classes (nxsl/java/ namespaces) this policy references but that aren't on the classpath. */
     public List<String> missingJavaClasses() {
         return source == null ? Collections.emptyList() : JavaExtensions.missingClasses(source);

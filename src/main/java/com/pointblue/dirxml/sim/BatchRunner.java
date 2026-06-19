@@ -70,9 +70,11 @@ public final class BatchRunner {
 
             boolean haveOut = Files.exists(c.expectedOutput);
             boolean haveDir = Files.exists(c.expectedDirectory);
-            if (!haveOut && !haveDir) {
+            Path assertFile = caseDir.resolve("expected.assertions");
+            boolean haveAssert = Files.exists(assertFile);
+            if (!haveOut && !haveDir && !haveAssert) {
                 return result(name, Outcome.SKIP, start,
-                    "no expected-output.xds; run 'record' to capture a golden");
+                    "no expected-output.xds / expected.assertions; run 'record' or add assertions");
             }
 
             StringBuilder detail = new StringBuilder();
@@ -89,10 +91,17 @@ public final class BatchRunner {
                     readString(c.expectedDirectory), c.directory.dumpState());
                 if (!d.equal) {
                     ok = false;
-                    if (detail.length() > 0) {
-                        detail.append('\n');
+                    appendLine(detail, "directory: " + d.message);
+                }
+            }
+            if (haveAssert) {
+                var checks = Assertions.evaluate(
+                    Assertions.parse(readString(assertFile)), r.finalXds);
+                for (Assertions.Check ck : checks) {
+                    if (!ck.pass()) {
+                        ok = false;
+                        appendLine(detail, "assert FAIL [" + ck.assertion().raw() + "]: " + ck.detail());
                     }
-                    detail.append("directory: ").append(d.message);
                 }
             }
             return result(name, ok ? Outcome.PASS : Outcome.FAIL, start, detail.toString());
@@ -192,6 +201,13 @@ public final class BatchRunner {
 
     private static CaseResult result(String name, Outcome o, long startNanos, String detail) {
         return new CaseResult(name, o, (System.nanoTime() - startNanos) / 1_000_000, detail);
+    }
+
+    private static void appendLine(StringBuilder sb, String line) {
+        if (sb.length() > 0) {
+            sb.append('\n');
+        }
+        sb.append(line);
     }
 
     private static String relativeName(Path root, Path caseDir) {

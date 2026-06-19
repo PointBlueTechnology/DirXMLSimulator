@@ -173,11 +173,15 @@ bin/sim step   <caseDir>             # per-stage input/output/queries/trace
 bin/sim test   <caseDir>             # diff vs expected-*.xds; exit !=0 on mismatch
 bin/sim test-all <dir> [--junit f] [--json f]  # run every case under <dir>; CI summary + exit code
 bin/sim compare <caseDir> --against <cfg>  # same input through two policy sets; per-stage divergence
+bin/sim coverage <dir>               # rules fired vs defined across a corpus; lists never-fired rules
 bin/sim record <caseDir>             # write expected-output.xds / expected-directory.xds
 ```
 
 `run`, `step`, `test`, and `compare` accept `--json` for structured output an
-agent or script can parse.
+agent or script can parse. A case can also carry an `expected.assertions` file
+(XPath checks like `exists //modify-attr[@attr-name='Email']` or `vetoed`) that
+`test`/`test-all` evaluate — robust where a full golden is brittle. See
+[docs/regression-testing.md](docs/regression-testing.md).
 
 `test-all` discovers every case (a directory with an `input.xds`) under `<dir>`,
 runs each as `test` does, prints a PASS/FAIL/ERROR/SKIP summary, and exits non-zero
@@ -199,6 +203,7 @@ cases/<name>/
   gcv.xml                # optional: GCV definitions
   expected-output.xds    # golden (written by `record`)
   expected-directory.xds # optional golden: directory end-state
+  expected.assertions    # optional XPath assertions on the final output (alt/complement to a golden)
 ```
 
 To drive the chain from a real driver instead of `chain.txt`, set one config

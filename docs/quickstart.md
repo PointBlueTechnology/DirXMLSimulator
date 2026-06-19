@@ -358,6 +358,7 @@ bin/sim dbevents <caseDir>           list/pick logged events from the Event Logg
 bin/sim test   <caseDir>             diff vs goldens; exit 0 pass, 1 mismatch
 bin/sim test-all <dir> [--junit f] [--json f]  run every case under <dir>; CI summary + exit code
 bin/sim compare <caseDir> --against <cfg>  same input through two policy sets; per-stage divergence
+bin/sim coverage <dir> [--json]      rules fired vs defined across a corpus; lists never-fired rules
 bin/sim harvest <configDir> <outDir> [--refresh]  mint a regression corpus from real events
 bin/sim record <caseDir>             write expected-output.xds / expected-directory.xds
 bin/sim extract <trace> <outDir>     mine a DSTrace log into a case
