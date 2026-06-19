@@ -135,6 +135,7 @@ bin/sim step   <caseDir> [--rules]   # per-stage (or with --rules, per-rule) i/o
 bin/sim test   <caseDir>             # diff vs expected-*.xds; exit 0 pass, 1 mismatch
 bin/sim test-all <dir> [--junit f] [--json f]  # run every case under <dir>; CI summary + exit code
 bin/sim compare <caseDir> --against <cfg>  # same input through two policy sets; per-stage divergence
+bin/sim coverage <dir> [--json]      # rules fired vs defined across a corpus; lists never-fired rules
 bin/sim record <caseDir>             # write expected-output.xds / expected-directory.xds
 bin/sim extract <trace> <outDir>     # mine a DSTrace log into a case (input + directory + samples)
 bin/sim dxcache <caseDir>            # read a stopped driver's event cache (live) into the case
@@ -159,6 +160,18 @@ for "did my edit change anything?" before goldens exist. Full workflow + CI/CD:
 `--json` (and `test-all --json <file>`) for structured output — prefer it when
 driving the loop programmatically. `step --json` gives each stage's input/output
 XDS, queries, commands, trace, and error.
+
+**Assertions over brittle goldens:** instead of (or alongside) a full
+`expected-output.xds`, a case can carry `expected.assertions` — one XPath check per
+line, evaluated against the final output by `test`/`test-all`:
+`exists //modify-attr[@attr-name='Email']`, `absent //modify-attr[@attr-name='Surname']`,
+`equals //add-attr[@attr-name='Given Name']/value => Jane`, `count //modify => 1`,
+`matches … => <regex>`, or `vetoed`/`not-vetoed`. Prefer assertions to pin one
+behavior robustly; use a golden for "nothing changed at all."
+
+**Find dead/untested rules:** `coverage <dir>` runs every case and reports which
+rules fired vs are defined — rules that never fire across the corpus are candidate
+dead logic or coverage gaps.
 
 ## What each command prints (so you can interpret it without a trial run)
 

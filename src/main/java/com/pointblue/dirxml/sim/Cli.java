@@ -13,6 +13,7 @@ import java.nio.file.Paths;
  *   test   &lt;caseDir&gt;            run and diff vs expected-*.xds; exit !=0 on mismatch
  *   test-all &lt;dir&gt;             run every case under dir; summary + CI reports; exit !=0 on any fail
  *   compare &lt;caseDir&gt; --against &lt;cfg&gt;  same input through two policy sets; per-stage divergence
+ *   coverage &lt;dir&gt;             rules fired vs defined across a corpus; lists never-fired rules
  *
  *   run/step/test/compare accept --json for structured output.
  *   record &lt;caseDir&gt;            run and write expected-output.xds / expected-directory.xds
@@ -72,6 +73,19 @@ public final class Cli {
             }
             try {
                 System.exit(doHarvest(Paths.get(args[1]), Paths.get(args[2]), hasFlag(args, "--refresh")));
+            } catch (Exception e) {
+                System.err.println("ERROR: " + e.getMessage());
+                System.exit(3);
+            }
+        }
+        if (args.length >= 1 && args[0].equals("coverage")) {
+            if (args.length < 2) {
+                System.err.println("usage: coverage <dir> [--json]   "
+                    + "(rules fired vs defined across every case under <dir>)");
+                System.exit(2);
+            }
+            try {
+                System.exit(doCoverage(Paths.get(args[1]), hasFlag(args, "--json")));
             } catch (Exception e) {
                 System.err.println("ERROR: " + e.getMessage());
                 System.exit(3);
@@ -269,6 +283,8 @@ public final class Cli {
         }
         warnDiagnostics(c);
         boolean ok = true;
+        Path assertFile = caseDir.resolve("expected.assertions");
+        boolean haveAssertions = Files.exists(assertFile);
 
         if (Files.exists(c.expectedOutput)) {
             XmlCompare.Diff d = XmlCompare.compare(read(c.expectedOutput), r.finalXds);
@@ -277,7 +293,7 @@ public final class Cli {
                 ok = false;
                 System.out.println(d.message);
             }
-        } else {
+        } else if (!haveAssertions) {
             System.out.println("output: SKIP (no expected-output.xds; use 'record')");
         }
 
@@ -287,6 +303,15 @@ public final class Cli {
             if (!d.equal) {
                 ok = false;
                 System.out.println(d.message);
+            }
+        }
+
+        if (haveAssertions) {
+            var checks = Assertions.evaluate(Assertions.parse(read(assertFile)), r.finalXds);
+            for (Assertions.Check ck : checks) {
+                System.out.println("assert: " + (ck.pass() ? "PASS" : "FAIL") + "  " + ck.assertion().raw()
+                    + (ck.pass() ? "" : "   -> " + ck.detail()));
+                ok &= ck.pass();
             }
         }
 
@@ -311,12 +336,26 @@ public final class Cli {
             dirBlock = Json.obj("checked", "true", "equal", bool(d.equal),
                 "diff", d.equal ? "null" : Json.q(d.message));
         }
+        String assertBlock = "null";
+        Path assertFile = caseDir.resolve("expected.assertions");
+        if (Files.exists(assertFile)) {
+            var checks = Assertions.evaluate(Assertions.parse(read(assertFile)), r.finalXds);
+            java.util.List<String> arr = new java.util.ArrayList<>();
+            for (Assertions.Check ck : checks) {
+                arr.add(Json.obj("assertion", Json.q(ck.assertion().raw()),
+                    "pass", bool(ck.pass()),
+                    "detail", ck.detail().isBlank() ? "null" : Json.q(ck.detail())));
+                ok &= ck.pass();
+            }
+            assertBlock = Json.arr(arr);
+        }
         System.out.println(Json.obj(
             "command", Json.q("test"),
             "case", Json.q(caseDir.toString()),
             "result", Json.q(ok ? "PASS" : "FAIL"),
             "output", outBlock,
-            "directory", dirBlock));
+            "directory", dirBlock,
+            "assertions", assertBlock));
         return ok ? 0 : 1;
     }
 
@@ -483,6 +522,35 @@ public final class Cli {
                 }
             });
         }
+    }
+
+    /**
+     * Report rule coverage across every case under {@code dir}: which DirXML Script
+     * rules fired (from the trace) vs which are defined, highlighting rules that
+     * never fired (candidate dead/untested logic).
+     */
+    private static int doCoverage(Path dir, boolean wantJson) throws Exception {
+        if (!Files.isDirectory(dir)) {
+            System.err.println("ERROR: not a directory: " + dir);
+            return 2;
+        }
+        CoverageReporter.Coverage cov = new CoverageReporter.Coverage();
+        for (Path caseDir : BatchRunner.discover(dir)) {
+            try {
+                Case c = Case.load(caseDir);
+                cov.define(c.sim.policyStages());
+                ChannelSimulator.Result r = c.run();
+                cov.observe(r.fullTrace);
+            } catch (Exception e) {
+                System.err.println("  (skipped " + caseDir.getFileName() + ": " + e.getMessage() + ")");
+            }
+        }
+        if (cov.cases == 0) {
+            System.out.println("no runnable cases under " + dir);
+            return 0;
+        }
+        System.out.println(wantJson ? CoverageReporter.toJson(cov, dir) : CoverageReporter.summary(cov));
+        return 0;
     }
 
     private static int doRecord(Path caseDir) {
@@ -765,6 +833,7 @@ public final class Cli {
         System.err.println("  test   <caseDir> [--json]    diff vs expected-*.xds; exit !=0 on mismatch");
         System.err.println("  test-all <dir> [--junit f] [--json f]  run every case; CI summary + exit code");
         System.err.println("  compare <caseDir> --against <cfg> [--json]  two policy sets, same input; divergence");
+        System.err.println("  coverage <dir> [--json]      rules fired vs defined across a corpus");
         System.err.println("  record <caseDir>             write goldens");
         System.err.println("  extract <traceFile> <outDir> mine a DSTrace log into a case");
         System.err.println("  dxcache <caseDir>            read a driver's event cache (live) into the case");

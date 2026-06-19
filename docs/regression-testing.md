@@ -164,6 +164,74 @@ compare cases/my-case
 `compare` complements goldens: use it for ad-hoc "what changed" exploration;
 use `harvest` + `test-all` for the standing regression gate.
 
+## Assertions: pin one behavior without a full golden
+
+A full-document golden is exact but brittle — an incidental change anywhere fails
+it. When you'd rather assert *one specific thing* ("it sets Email", "it did NOT
+touch Surname", "it vetoed"), add an **`expected.assertions`** file to the case.
+`test` and `test-all` evaluate it against the final output; it can stand alone or
+sit alongside a golden.
+
+One assertion per line — `<verb> <xpath> [=> <value>]` (the `=>` lets the XPath and
+value contain spaces); `#` comments and blank lines are ignored:
+
+```
+# expected.assertions
+not-vetoed                                              # at least one operation survived
+exists   //modify-attr[@attr-name='Email']             # Email was modified
+absent   //modify-attr[@attr-name='Surname']           # Surname was NOT touched
+equals   //add-attr[@attr-name='Given Name']/value => Jane
+count    //modify => 1                                  # exactly one modify op
+matches  //add-attr[@attr-name='dob']/value => \d{8}    # date is yyyyMMdd
+vetoed                                                  # (the opposite) nothing survived
+```
+
+| Verb | Passes when |
+|---|---|
+| `exists <xpath>` | at least one node matches |
+| `absent <xpath>` | no node matches |
+| `equals <xpath> => v` | first match's text equals `v` |
+| `matches <xpath> => re` | first match's text matches regex `re` |
+| `count <xpath> => n` | exactly `n` nodes match |
+| `vetoed` / `not-vetoed` | no / at least one `add\|modify\|delete\|rename\|move` survived |
+
+A case with only `expected.assertions` (no golden) is still a real test — it
+PASSes/FAILs on the assertions, not SKIP. Assertions read robustly: they ignore
+attribute ordering and unrelated parts of the document, so they survive policy
+edits that a full golden would flag. Use a golden for "nothing at all changed,"
+assertions for "this specific thing is true."
+
+## Rule coverage: find dead or untested policy
+
+Over a corpus, which rules actually fired? `coverage` runs every case under a
+directory, reads the engine trace for each, and reports which DirXML Script rules
+fired vs which are defined — surfacing rules that **never fire** (candidate dead
+logic, or gaps in your test corpus):
+
+```bash
+bin/sim coverage cases/regression
+```
+
+```
+rule coverage: 47/52 fired (90%) across 30 case(s)
+  never fired (5):
+    publisher-command:pub-ctp_Event Transforms
+      - suppress legacy region codes
+      - VIP override
+    …
+```
+
+- "Fired" means the rule's **actions ran** (from `Applying rule '…'` in the trace);
+  a rule whose condition was always false shows as never-fired — exactly what you
+  want to find.
+- Run it over a harvested corpus to ask "does real production traffic exercise this
+  rule at all?" A rule that never fires across hundreds of real events is either
+  dead or genuinely conditional — worth a look either way.
+- `--json` emits per-rule `{stage, rule, fired}` plus totals for a dashboard.
+
+> Matching is by rule name (the trace doesn't carry the owning policy), so a rule
+> name reused across stages counts as covered if it fired in any of them.
+
 ## Machine-readable output (`--json`)
 
 `run`, `step`, `test`, and `compare` accept `--json` (and `test-all` takes

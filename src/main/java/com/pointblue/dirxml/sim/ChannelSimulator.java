@@ -95,6 +95,11 @@ public final class ChannelSimulator {
         return this;
     }
 
+    /** The ordered policy stages of this channel (read-only) — e.g. for rule coverage. */
+    public List<PolicyStage> policyStages() {
+        return List.copyOf(stages);
+    }
+
     /** Distinct Java extension classes referenced by any stage that aren't on the classpath. */
     public List<String> missingJavaClasses() {
         java.util.LinkedHashSet<String> all = new java.util.LinkedHashSet<>();

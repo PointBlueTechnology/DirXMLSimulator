@@ -156,6 +156,39 @@ For each stage you get:
   ("Rule selected"), each action, token/arg-value resolution, and "Policy
   returned". This is where you see *why* a value came out the way it did.
 
+## Assertions (`expected.assertions`, optional)
+
+Besides (or instead of) a full `expected-output.xds` golden, a case may carry an
+`expected.assertions` file — XPath checks on the **final output**, evaluated by
+`test` and `test-all`. Prefer these to pin one behavior without being brittle to
+unrelated output changes; use a golden when you want "nothing changed at all."
+
+One assertion per line, `<verb> <xpath> [=> <value>]` (`=>` separates XPath from an
+expected value so both may contain spaces); `#` comments / blank lines ignored:
+
+```
+not-vetoed                                          # at least one op survived
+exists   //modify-attr[@attr-name='Email']
+absent   //modify-attr[@attr-name='Surname']        # was NOT modified
+equals   //add-attr[@attr-name='Given Name']/value => Jane
+count    //modify => 1
+matches  //add-attr[@attr-name='dob']/value => \d{8}
+vetoed                                               # nothing survived the chain
+```
+
+Verbs: `exists`, `absent`, `equals … => v`, `matches … => regex`,
+`count … => n`, `vetoed`, `not-vetoed`. A case with only assertions (no golden) is
+still a real test (PASS/FAIL, not SKIP). `test`/`test-all --json` include an
+`assertions` block.
+
+## Rule coverage (`bin/sim coverage <dir>`)
+
+Runs every case under `<dir>` and reports which DirXML Script rules **fired** (from
+the trace) vs which are **defined** — listing rules that never fired (candidate
+dead logic or test-corpus gaps). Add `--json` for per-rule `{stage, rule, fired}`
+plus totals. Great over a harvested corpus to ask "does real traffic exercise this
+rule?"
+
 ## Driver config: an export or a Designer project
 
 ### Driver export
