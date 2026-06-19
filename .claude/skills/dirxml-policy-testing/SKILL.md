@@ -102,6 +102,13 @@ or supplied via a case-local `mapping-tables/` dir — but if a referenced table
 none of those, **ask for it before running** rather than letting the lookup fail or
 silently return nothing (see the table).
 
+The same applies to **DriverSet-scope GCVs and shared/Library policies**: a *full*
+driver-set source (Designer project, LDIF dump, or live `ldapConfig=`) carries them;
+a **single-driver export** may not (including referenced Library policies is an
+export-time option). So **prefer a full driver-set source when one is available**,
+and when only a single-driver export is on hand, expect to supply a missing GCV
+(`gcv.<name>=`) or hear the warnings below.
+
 How to recognize each gap and what to request:
 
 | You need | Sign it's missing | Ask for / how the user gets it |
@@ -111,7 +118,8 @@ How to recognize each gap and what to request:
 | **Input event** | no `input.xds`, or you'd be authoring it blind | A **DSTrace** of the real transaction (then `bin/sim extract`); or — with a live connection — a **stopped** driver's event cache (`bin/sim dxcache`) or the **Event Logger DB** (`bin/sim dbevents`, then pick one); or a precise description (operation, class, key attributes) so you can author one. |
 | **Seed / directory data** | a `<query>` returns no `<instance>` and a value then goes missing downstream | The object(s) the policy looks up — a **trace** (carries the directory's real answers), an **LDIF dump** of those objects (`ldif=`), or the specific attribute values to hand-seed `directory.xds`. |
 | **A named password** | `WARNING: named password(s) … not supplied` | The secret value — intentionally absent from exports; set `namedPassword.<name>=…`. Treat as sensitive. |
-| **A GCV value** | a GCV resolves empty / the policy behaves as if it's unset | The value (or a `gcv.xml` override); a stale value may mean they need a fresher export. |
+| **A GCV value** (incl. DriverSet/Library scope) | `WARNING: GCV(s) referenced but not defined` (or a value resolves empty) | The value — set `gcv.<name>=<value>` in case.properties (quickest) or a `gcv.xml` override; or use a **full driver-set source** (project/LDIF/live, or re-export with referenced policies) which carries the DriverSet GCV block a single-driver export may omit. |
+| **A shared / Library policy** | `WARNING: policy linkage(s) resolved to no content` | The driver links a policy living in the driver-set **Library** that this source doesn't contain. Get a **re-export with the *include referenced policies* option on**, or a full driver-set export/LDIF/project/live (all carry the Library). |
 | **A Java extension class** | `WARNING: Java extension classes not on the classpath` | The jar that defines it, to stage in `lib/`. |
 | **An `es:` function** | a stage `[ERROR]` "function not found" | The ECMAScript resource (from the export/project, or a `.js` for `ecmascript/`). |
 | **A mapping table** (`Map` token) | a policy references a `<token-map>` whose table isn't in your config source; at run a stage `[ERROR]` `Couldn't access map definition '…'` (code -9192) | The referenced `<mapping-table>`. It's a driver-set **Library** resource: a **full driver-set export**, a **Designer project**, an **LDIF** dump, or **live LDAP** (`ldapConfig=`) all supply it automatically (a single-driver export won't). Or drop it into the case as `mapping-tables/<TableName>.xml` (filename = table name; content is the `<mapping-table>…</mapping-table>`). Once available, the `Map` token resolves normally. |

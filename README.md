@@ -200,7 +200,7 @@ cases/<name>/
   chain.txt              # ordered stages: "stageName = policy.xml" per line
   input.xds              # the operation to run
   directory.xds          # optional: initial fake-directory state (<instance> set)
-  gcv.xml                # optional: GCV definitions
+  gcv.xml                # optional: GCV definitions (or gcv.<name>=<value> in case.properties)
   expected-output.xds    # golden (written by `record`)
   expected-directory.xds # optional golden: directory end-state
   expected.assertions    # optional XPath assertions on the final output (alt/complement to a golden)

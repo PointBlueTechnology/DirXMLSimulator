@@ -27,11 +27,18 @@ public final class EngineContext {
 
     private final RuleStaticContext staticCtx;
     private final CaptureEngineTrace tracer;
+    private final GCDefinitions gcv;
     private FakeActions.Config fakeConfig = new FakeActions.Config();
 
-    private EngineContext(RuleStaticContext staticCtx, CaptureEngineTrace tracer) {
+    private EngineContext(RuleStaticContext staticCtx, CaptureEngineTrace tracer, GCDefinitions gcv) {
         this.staticCtx = staticCtx;
         this.tracer = tracer;
+        this.gcv = gcv;
+    }
+
+    /** True if a GCV by this name resolves to a value in scope (incl. engine auto-GCVs). */
+    public boolean isGcvDefined(String name) {
+        return name != null && gcv.getValue(name) != null;
     }
 
     /** Faking config for external actions (REST/email/RBPM/…). Enabled by default. */
@@ -66,7 +73,7 @@ public final class EngineContext {
             new java.util.TreeMap<>(),   // driver variables (scope="driver")
             REGEX_ESC_CHARS);
         addAutoGcvs(gcv, driverDN);
-        return new EngineContext(ctx, tracer);
+        return new EngineContext(ctx, tracer, gcv);
     }
 
     /**

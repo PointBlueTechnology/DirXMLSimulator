@@ -127,6 +127,15 @@ public final class ChannelSimulator {
         return new ArrayList<>(all);
     }
 
+    /** Distinct GCV names referenced by any stage. */
+    public List<String> referencedGcvs() {
+        java.util.LinkedHashSet<String> all = new java.util.LinkedHashSet<>();
+        for (PolicyStage s : stages) {
+            all.addAll(s.referencedGcvs());
+        }
+        return new ArrayList<>(all);
+    }
+
     /** Run the input operation through all stages, capturing per-stage snapshots. */
     public Result run(Document input) {
         return run(input, false);
