@@ -169,6 +169,23 @@ public final class Case {
                 }
             }
 
+            // Mapping tables (for Map tokens): config-source-embedded resources,
+            // overlaid by a case-local mapping-tables/ dir. Registered before the
+            // chain is built, since a Map token resolves its table at stage-build.
+            java.util.Map<String, String> tables = new java.util.LinkedHashMap<>();
+            if (export != null) {
+                tables.putAll(export.mappingTables());
+            } else if (project != null) {
+                tables.putAll(project.mappingTables());
+            } else if (ldifConfig != null) {
+                tables.putAll(ldifConfig.mappingTables());
+            }
+            tables.putAll(MappingTableSource.fromCaseDir(caseDir));   // case-local overrides
+            if (!tables.isEmpty()) {
+                NdsStreamProtocol.ensureInstalled();
+                tables.forEach(MappingTableStore::register);
+            }
+
             ChannelSimulator sim = new ChannelSimulator(ctx, directory);
             boolean publisher = "publisher".equals(p.getProperty("channel", "subscriber").trim().toLowerCase());
             boolean wantFilter = Boolean.parseBoolean(p.getProperty("filter", "false"));

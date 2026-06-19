@@ -1,9 +1,19 @@
 # Design note: mapping tables (the `Map` token) offline
 
-Status: **design** (2026-06-19). Extends the simulator to resolve **mapping
+Status: **implemented** (2026-06-19). Extends the simulator to resolve **mapping
 tables** — the data behind DirXML Script's `Map` token (and the `dest`/`source`
 column lookups used for code translation, region maps, etc.) — so policies that
 use them load and run headlessly, instead of failing.
+
+> **Shipped:** `NdsStreamProtocol` (a `vnd.nds.stream:` URL handler) + `MappingTableStore`
+> (name-keyed) + base-URI plumbing in `PolicyStage` (only for Map-using policies) +
+> `MappingTableSource` (case-local `mapping-tables/` dir, and extraction from a
+> driver/driver-set **export** and **LDIF**). Wired in `Case.load`. Validated: the
+> `Map` token that fails today with VRDException -9192 now resolves end-to-end
+> (CA→West) from a case-local table; extraction pulls all 6 tables from the real
+> `RFI-DriverSet.xml`. **Deferred:** Designer-**project** resource extraction (use a
+> `mapping-tables/` dir meanwhile); live read from the vault. The approach below is
+> what was built.
 
 Grounded in a confirmed investigation (empirical + decompiled engine); see
 "Background" for the exact failure and root cause.

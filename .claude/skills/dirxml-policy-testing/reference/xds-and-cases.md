@@ -189,6 +189,23 @@ dead logic or test-corpus gaps). Add `--json` for per-rule `{stage, rule, fired}
 plus totals. Great over a harvested corpus to ask "does real traffic exercise this
 rule?"
 
+## Mapping tables (`Map` token, optional)
+
+A DirXML Script `Map` token (`<token-map table="..\..\Library\X" source="…"
+dest="…">`) looks up a value in a **mapping table**. The simulator resolves these
+offline when the table is available, in priority order:
+
+- a case-local **`mapping-tables/`** dir — one `<TableName>.xml` per table (the
+  filename is the table name; content is the `<mapping-table>…</mapping-table>`);
+- tables **embedded in the config source** — a driver/driver-set **export** or an
+  **LDIF** dump carries them as Library resources (extracted automatically).
+
+If the referenced table is in none of these, the token fails to build
+(`Couldn't access map definition '…'`, code -9192) — supply the table and re-run.
+A Designer **project** doesn't yet auto-extract tables; use a `mapping-tables/` dir
+for project cases. (Resolution is by table *name*, so the exact DN/tree in the
+reference doesn't matter.)
+
 ## Driver config: an export or a Designer project
 
 ### Driver export

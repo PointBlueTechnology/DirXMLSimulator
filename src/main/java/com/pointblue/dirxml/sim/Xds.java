@@ -100,6 +100,26 @@ public final class Xds {
         return out;
     }
 
+    /** All descendant elements with the given local name, in document order. */
+    public static List<Element> descendantsByName(Node root, String localName) {
+        List<Element> out = new ArrayList<>();
+        collectDescendants(root, localName, out);
+        return out;
+    }
+
+    private static void collectDescendants(Node node, String localName, List<Element> out) {
+        NodeList kids = node.getChildNodes();
+        for (int i = 0; i < kids.getLength(); i++) {
+            Node k = kids.item(i);
+            if (k.getNodeType() == Node.ELEMENT_NODE) {
+                if (localName.equals(k.getLocalName())) {
+                    out.add((Element) k);
+                }
+                collectDescendants(k, localName, out);
+            }
+        }
+    }
+
     /** Immediate child elements (any name). */
     public static List<Element> childElements(Node parent) {
         List<Element> out = new ArrayList<>();
