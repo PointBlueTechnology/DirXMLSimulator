@@ -313,6 +313,23 @@ or multiple values on a single-valued attribute. Load one any of these ways:
 Schema warnings are printed up front by `run`/`step`/`test`, e.g.
 `WARNING: schema validation … unknown attribute 'Sumame' (typo?)`.
 
+## Mapping tables (`Map` token)
+
+If a policy uses a `Map` token (`<token-map table="..\..\Library\X" …>`), the
+simulator resolves it offline. The tables are **auto-extracted from your config
+source** — a driver-set export, a Designer project, an LDIF dump, or live LDAP
+(`ldapConfig=`). A single-driver export won't carry them (they live in the
+driver-set Library); in that case, or to override, drop the table into the case:
+
+```
+cases/my-test/
+  mapping-tables/
+    LocCodeMap.xml      # <mapping-table>…</mapping-table>; the filename is the table name
+```
+
+If a referenced table is in none of these, the stage reports
+`Couldn't access map definition '…'` — supply the table and re-run.
+
 ## 4. Test a change
 
 Lock in the current behavior as a golden, edit the policy, and verify:
