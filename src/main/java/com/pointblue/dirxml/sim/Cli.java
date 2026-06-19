@@ -13,6 +13,7 @@ import java.nio.file.Paths;
  *   test   &lt;caseDir&gt;            run and diff vs expected-*.xds; exit !=0 on mismatch
  *   test-all &lt;dir&gt;             run every case under dir; summary + CI reports; exit !=0 on any fail
  *   record &lt;caseDir&gt;            run and write expected-output.xds / expected-directory.xds
+ *   harvest &lt;cfgDir&gt; &lt;outDir&gt;   mint a regression corpus from real Event Logger DB events
  * </pre>
  */
 public final class Cli {
@@ -55,6 +56,19 @@ public final class Cli {
             }
             try {
                 System.exit(doDbEvents(Paths.get(args[1])));
+            } catch (Exception e) {
+                System.err.println("ERROR: " + e.getMessage());
+                System.exit(3);
+            }
+        }
+        if (args.length >= 1 && args[0].equals("harvest")) {
+            if (args.length < 3) {
+                System.err.println("usage: harvest <configCaseDir> <outDir> [--refresh]   "
+                    + "(reads db=/filters + a config source from <configCaseDir>/case.properties)");
+                System.exit(2);
+            }
+            try {
+                System.exit(doHarvest(Paths.get(args[1]), Paths.get(args[2]), hasFlag(args, "--refresh")));
             } catch (Exception e) {
                 System.err.println("ERROR: " + e.getMessage());
                 System.exit(3);
@@ -260,6 +274,25 @@ public final class Cli {
             System.out.println("wrote " + jsonFile);
         }
         return BatchRunner.anyFailed(results) ? 1 : 0;
+    }
+
+    /**
+     * Replay real Event Logger DB events through the current policies and snapshot
+     * each produced output as a golden — minting a regression corpus under
+     * {@code outDir} that {@code test-all} can run. Source + filters + config come
+     * from {@code <configCaseDir>/case.properties}.
+     */
+    private static int doHarvest(Path configCaseDir, Path outDir, boolean refresh) throws Exception {
+        Harvester.Result r = Harvester.harvest(configCaseDir, outDir, refresh);
+        if (r.events == 0) {
+            System.out.println("no matching events — nothing harvested");
+            return 0;
+        }
+        System.out.printf("harvested %d event(s) -> %d case(s) under %s%s%n",
+            r.events, r.cases, r.outDir,
+            r.flagged > 0 ? "   (" + r.flagged + " query-light — see HARVEST.md)" : "");
+        System.out.println("run them:  bin/sim test-all " + r.outDir);
+        return 0;
     }
 
     private static int doRecord(Path caseDir) {
@@ -540,6 +573,7 @@ public final class Cli {
         System.err.println("  extract <traceFile> <outDir> mine a DSTrace log into a case");
         System.err.println("  dxcache <caseDir>            read a driver's event cache (live) into the case");
         System.err.println("  dbevents <caseDir>           list/pick logged events from the Event Logger DB");
+        System.err.println("  harvest <configDir> <outDir> [--refresh]  mint a regression corpus from real events");
         System.err.println("  doctor                       setup self-check");
     }
 }

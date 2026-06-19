@@ -94,6 +94,16 @@ with the existing sample cases (a known-good and a deliberately-broken fixture).
 
 ## Feature 2: regression mining (harvest)
 
+> **Status: implemented** (2026-06-19, v1 = Event Logger DB source) — `Harvester`
+> + `bin/sim harvest <configDir> <outDir> [--refresh]`, 5 offline tests. Writes one
+> self-contained case per event (config source absolutized + backslash-escaped so
+> cases run anywhere; `directory.xds`/`gcv.xml` copied when present), captures the
+> current chain output as the golden, and writes `HARVEST.md` provenance with
+> per-case query-light flags. Validated live: 3 real DB modify events → live
+> CyberArk subscriber chain → goldens → `test-all` round-trips all PASS; `--refresh`
+> guard enforced. The user-facing guide is `docs/regression-testing.md`. Trace as a
+> second source remains a follow-up (DB was the priority).
+
 ### The idea
 
 You already have two sources of **real events** (`dbevents` from the Event Logger
