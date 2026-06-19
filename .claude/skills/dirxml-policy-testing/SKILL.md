@@ -133,6 +133,7 @@ How to recognize each gap and what to request:
 bin/sim run    <caseDir> [--trace]   # run chain; final output (+ full trace)
 bin/sim step   <caseDir> [--rules]   # per-stage (or with --rules, per-rule) i/o/queries/trace
 bin/sim test   <caseDir>             # diff vs expected-*.xds; exit 0 pass, 1 mismatch
+bin/sim test-all <dir> [--junit f] [--json f]  # run every case under <dir>; CI summary + exit code
 bin/sim record <caseDir>             # write expected-output.xds / expected-directory.xds
 bin/sim extract <trace> <outDir>     # mine a DSTrace log into a case (input + directory + samples)
 bin/sim dxcache <caseDir>            # read a stopped driver's event cache (live) into the case
@@ -142,6 +143,8 @@ bin/sim doctor                       # setup self-check
 
 `test` is the agent signal: exit 0 = pass, exit 1 = mismatch (with a diff). Seed a
 golden once the output looks right with `record`, then `test` guards regressions.
+`test-all` is the same signal over a whole corpus — run it after a policy edit to
+see every case that changed; it exits non-zero if any case FAILs or ERRORs.
 
 ## What each command prints (so you can interpret it without a trial run)
 

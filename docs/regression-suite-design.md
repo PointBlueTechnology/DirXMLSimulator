@@ -23,6 +23,13 @@ Feature 2 produces), then Feature 2.
 
 ## Feature 1: batch runner
 
+> **Status: implemented** (2026-06-19) — `BatchRunner` + `bin/sim test-all`, 6
+> offline tests. Discovery marker is `input.xds` (a runnable case), refining the
+> "directory with a `case.properties`" wording below — a `case.properties` is
+> optional, but a golden test needs an input to run. Validated on the bundled
+> cases (4 PASS, live/no-golden SKIP, an incomplete fetch-target ERROR, exit 1)
+> with JUnit + JSON written.
+
 ### CLI
 
 ```
