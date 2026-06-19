@@ -3,6 +3,11 @@
 From zero to stepping through your own driver's policies. Commands are
 copy-pasteable; `$` lines are shell.
 
+> **Developing a driver shim?** If you're writing the connector itself in its own
+> IntelliJ project and want to exercise it through the simulator on each build,
+> see [shim-dev-workflow.md](shim-dev-workflow.md) — it keeps the two repos
+> separate with your test cases in the shim repo.
+
 ## 1. One-time setup
 
 **JDK 21** is required (the engine jars are Java 21 bytecode). The `bin/sim`

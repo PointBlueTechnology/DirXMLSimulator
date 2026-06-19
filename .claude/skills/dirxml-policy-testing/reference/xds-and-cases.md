@@ -282,6 +282,12 @@ OUTPUT is the shim's real status/association response. Subscriber direction only
 The shim runs in-process, so pure-Java connectors work (REST/SCIM/SOAP/JDBC/
 Delimited Text/Loopback); native shims (AD-local, eDir) do not.
 
+When the user is *developing the shim* in its own project, keep the simulator and
+shim repos separate and put the case in the shim repo: `shimJar=` is resolved
+relative to the case dir, so point it at the shim's live build output (e.g.
+`shimJar=../../target/classes`) and each rebuild is picked up with no copy step.
+Full workflow: [docs/shim-dev-workflow.md](../../../../docs/shim-dev-workflow.md).
+
 ## Answering queries from live eDirectory (optional)
 
 Instead of seeding `directory.xds`, answer the chain's (and the shim's) queries
