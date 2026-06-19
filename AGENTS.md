@@ -42,7 +42,9 @@ bin/sim doctor                       setup self-check
    Designer `project=<dir>`+`driver=<name>`, or — often easiest — an
    `ldifConfig=<vault.ldif>`+`driver=<name>` (one live-vault LDIF dump carries the
    whole driver set's policies, GCVs, filter, and shim params). The harness
-   assembles the real chain and loads GCVs + ECMAScript resources.
+   assembles the real chain and loads GCVs, ECMAScript resources, and `Map` token
+   mapping tables (auto-extracted from the config source, or a case `mapping-tables/`
+   dir).
 3. **Diagnose** — `bin/sim step <caseDir>` (add `--rules`) to find the stage/rule
    where a value first appears, gets vetoed, or comes out wrong; read its trace.
 4. **Verify a change** — `bin/sim record` a golden, edit the policy, `bin/sim test`.

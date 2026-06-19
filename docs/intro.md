@@ -59,8 +59,10 @@ can:
   command to the **actual driver shim** to confirm it consumes what your policies
   produced (REST/SCIM/SOAP/JDBC and other pure-Java connectors).
 - **Handle the hard stuff** — Global Config Values, ECMAScript (`es:`) functions,
-  XSLT stylesheets, and Java extension functions all execute; missing pieces are
-  reported clearly instead of failing silently.
+  XSLT stylesheets, Java extension functions, and **`Map` token mapping tables**
+  all execute; the tables are pulled from your config source (export, project,
+  LDIF, or live vault) automatically, and missing pieces are reported clearly
+  instead of failing silently.
 
 All of it is scriptable and repeatable, so the agent can iterate — change a
 policy, re-run, read the trace, change again — without you in the loop for every
