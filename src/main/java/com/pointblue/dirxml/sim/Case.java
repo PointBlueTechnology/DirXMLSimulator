@@ -35,9 +35,11 @@ public final class Case {
     public final Path expectedOutput;     // may not exist
     public final Path expectedDirectory;  // may not exist
     public final List<String> schemaWarnings;  // input/directory vs schema (empty if no schema)
+    public final List<String> unresolvedPolicies;  // linked policies not found in the source
 
     private Case(Path dir, EngineContext ctx, FakeDirectory directory, ChannelSimulator sim,
-                 Document input, Path expectedOutput, Path expectedDirectory, List<String> schemaWarnings) {
+                 Document input, Path expectedOutput, Path expectedDirectory, List<String> schemaWarnings,
+                 List<String> unresolvedPolicies) {
         this.dir = dir;
         this.ctx = ctx;
         this.directory = directory;
@@ -46,6 +48,7 @@ public final class Case {
         this.expectedOutput = expectedOutput;
         this.expectedDirectory = expectedDirectory;
         this.schemaWarnings = schemaWarnings;
+        this.unresolvedPolicies = unresolvedPolicies;
     }
 
     public static Case load(Path caseDir) {
@@ -113,6 +116,10 @@ public final class Case {
                     System.err.println("warning: could not parse gcv.xml: " + t);
                 }
             }
+
+            // Direct GCV overrides: gcv.<name>=<value> in case.properties, merged
+            // last so they win over the source GCVs and gcv.xml.
+            applyGcvOverrides(gcv, p);
 
             EngineContext ctx = EngineContext.create(driverDN, dnFormat, fromNDS, gcv);
             ctx.setTraceLevel(traceLevel);
@@ -213,6 +220,10 @@ public final class Case {
                     sim.add(PolicyStage.fromFile(s.name, caseDir.resolve(s.policyPath), ctx));
                 }
             }
+            java.util.List<String> unresolvedPolicies =
+                export != null ? export.unresolvedPolicies()
+                : ldifConfig != null ? ldifConfig.unresolvedPolicies()
+                : java.util.List.of();
 
             Document input = Xds.parseFile(caseDir.resolve("input.xds"));
 
@@ -260,7 +271,8 @@ public final class Case {
 
             Path expOut = caseDir.resolve("expected-output.xds");
             Path expDir = caseDir.resolve("expected-directory.xds");
-            return new Case(caseDir, ctx, directory, sim, input, expOut, expDir, schemaWarnings);
+            return new Case(caseDir, ctx, directory, sim, input, expOut, expDir, schemaWarnings,
+                unresolvedPolicies);
         } catch (Exception e) {
             throw new RuntimeException("Failed to load case " + caseDir + ": " + e, e);
         }
@@ -291,6 +303,39 @@ public final class Case {
      *   shimAuthPassword.named=app   # or shimAuthPassword=<literal>
      * </pre>
      */
+    /** Merge {@code gcv.<name>=<value>} case.properties entries into the GCV scope (scalars). */
+    private static void applyGcvOverrides(GCDefinitions gcv, Properties p) {
+        StringBuilder defs = new StringBuilder();
+        for (String key : p.stringPropertyNames()) {
+            if (!key.startsWith("gcv.") || key.length() <= 4) {
+                continue;
+            }
+            String name = key.substring(4);
+            String value = p.getProperty(key);
+            defs.append("<definition name=\"").append(xmlAttr(name))
+                .append("\" display-name=\"").append(xmlAttr(name))
+                .append("\" type=\"string\"><value>").append(xmlText(value)).append("</value></definition>");
+        }
+        if (defs.length() == 0) {
+            return;
+        }
+        String doc = "<nds><configuration-values><definitions>" + defs
+            + "</definitions></configuration-values></nds>";
+        try {
+            gcv.merge(GCDefinitions.construct((org.w3c.dom.Node) Xds.parse(doc).getDocumentElement()));
+        } catch (Throwable t) {
+            System.err.println("warning: could not apply gcv.* overrides: " + t);
+        }
+    }
+
+    private static String xmlAttr(String s) {
+        return xmlText(s).replace("\"", "&quot;");
+    }
+
+    private static String xmlText(String s) {
+        return s == null ? "" : s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
     private static void wireShimAndLdap(Properties p, Path caseDir, DriverExport export,
             DesignerProject project, LdifDriverSource ldifConfig, String projectDriver,
             FakeDirectory directory, SchemaModel schema, ChannelSimulator sim) {

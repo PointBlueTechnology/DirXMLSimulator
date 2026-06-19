@@ -84,6 +84,11 @@ public final class PolicyStage {
         return source == null ? Collections.emptyList() : FakeActions.externalActions(source);
     }
 
+    /** GCV names this policy references (`~name~` or token-global-config-value). */
+    public java.util.Set<String> referencedGcvs() {
+        return source == null ? java.util.Collections.emptySet() : GcvReferences.referenced(source);
+    }
+
     /**
      * Expand a DirXML Script policy into one single-rule stage per {@code <rule>},
      * for per-rule stepping. Each sub-stage is a real one-rule policy run in order

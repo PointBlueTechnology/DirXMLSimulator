@@ -233,8 +233,17 @@ public final class DriverExport {
         return chain(ctx, PUBLISHER_ORDER);
     }
 
+    /** Linkages that resolved to no policy content (e.g. a Library policy not exported). */
+    private final List<String> unresolved = new ArrayList<>();
+
+    /** Names of policy-set linkages that resolved to no content during the last chain build. */
+    public List<String> unresolvedPolicies() {
+        return new ArrayList<>(unresolved);
+    }
+
     private List<PolicyStage> chain(EngineContext ctx, int[] setOrder) {
         List<PolicyStage> stages = new ArrayList<>();
+        unresolved.clear();
         for (int set : setOrder) {
             List<Linkage> links = linkagesBySet.get(set);
             if (links == null) {
@@ -243,6 +252,7 @@ public final class DriverExport {
             for (Linkage l : links) {
                 Element content = resolve(l);
                 if (content == null) {
+                    unresolved.add(l.name + " (" + SET_NAMES.get(set) + ")");
                     System.err.println("warning: linkage '" + l.name + "' (set " + set
                         + "/" + SET_NAMES.get(set) + ", channel " + l.channel
                         + ") resolved to no policy content; skipping");

@@ -145,7 +145,16 @@ public final class LdifDriverSource {
         return chain(driver, ctx, PUBLISHER_ORDER);
     }
 
+    /** Linked policies not found in the source (e.g. a Library policy absent from the dump). */
+    private final List<String> unresolved = new ArrayList<>();
+
+    /** Names of policy-set linkages that resolved to no content during the last chain build. */
+    public List<String> unresolvedPolicies() {
+        return new ArrayList<>(unresolved);
+    }
+
     private List<PolicyStage> chain(String driverName, EngineContext ctx, int[] setOrder) {
+        unresolved.clear();
         Entry driver = driver(driverName);
         // setId -> ordered list of (order, policyDN)
         Map<Integer, List<long[]>> bySet = new TreeMap<>();   // value: {order, indexIntoDns}
@@ -174,6 +183,7 @@ public final class LdifDriverSource {
                 String policyDn = dns.get((int) l[1]);
                 Element content = policyContent(policyDn);
                 if (content == null) {
+                    unresolved.add(rdnValue(policyDn) + " (" + SET_NAMES.get(set) + ")");
                     System.err.println("warning: policy '" + policyDn + "' (set " + set + "/"
                         + SET_NAMES.get(set) + ") not found or has no XmlData; skipping");
                     continue;

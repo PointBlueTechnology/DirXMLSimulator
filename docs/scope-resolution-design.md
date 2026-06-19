@@ -1,9 +1,19 @@
 # Design note: DriverSet/Library-scope GCVs & shared policies
 
-Status: **design** (2026-06-19). Backlog #8. Makes the simulator **tell you when a
-DriverSet-scope GCV or a shared/Library policy is referenced but not present**, lets
+Status: **implemented** (2026-06-19). Backlog #8. Makes the simulator **tell you when
+a DriverSet-scope GCV or a shared/Library policy is referenced but not present**, lets
 you **supply the missing value directly**, and teaches the agent to ask for it —
 rather than running on a silently-incomplete chain.
+
+> **Shipped:** `GcvReferences` (scans `token-global-variable`/`token-global-config-value`)
+> → `run`/`step`/`test` warn referenced-but-undefined GCVs (excluding engine
+> `dirxml.auto.*`); the chain builders now accumulate unresolved policy linkages
+> (`DriverExport`/`LdifDriverSource.unresolvedPolicies()`) → warned up front;
+> `gcv.<name>=<value>` in `case.properties` overlays GCVs (after the source + `gcv.xml`).
+> Validated: a `token-global-variable` GCV warns when undefined and resolves when set;
+> `~name~` is correctly *not* treated as a policy GCV reference. **Deferred:** the
+> case-local `policies/` splice (use a fuller driver-set source meanwhile). The plan
+> below is what was built.
 
 ## What's already handled (investigation)
 

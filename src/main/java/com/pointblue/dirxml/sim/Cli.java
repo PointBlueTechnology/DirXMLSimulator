@@ -186,6 +186,36 @@ public final class Cli {
             }
             System.out.println();
         }
+        if (!c.unresolvedPolicies.isEmpty()) {
+            System.out.println("WARNING: policy linkage(s) resolved to no content — a shared/Library "
+                + "policy missing from this source (re-export with referenced policies, or use a full "
+                + "driver-set export/LDIF/project/live):");
+            for (String n : c.unresolvedPolicies) {
+                System.out.println("  - " + n);
+            }
+            System.out.println();
+        }
+        java.util.List<String> undefinedGcvs = undefinedGcvs(c);
+        if (!undefinedGcvs.isEmpty()) {
+            System.out.println("WARNING: GCV(s) referenced but not defined (resolve to empty — a "
+                + "DriverSet/Library-scope value missing from this source?); supply via a fuller "
+                + "driver-set source, gcv.xml, or gcv.<name>=<value> in case.properties:");
+            for (String n : undefinedGcvs) {
+                System.out.println("  - " + n);
+            }
+            System.out.println();
+        }
+    }
+
+    /** Referenced GCVs with no definition in scope (excluding engine-provided auto GCVs). */
+    private static java.util.List<String> undefinedGcvs(Case c) {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        for (String name : c.sim.referencedGcvs()) {
+            if (!GcvReferences.isEngineProvided(name) && !c.ctx.isGcvDefined(name)) {
+                out.add(name);
+            }
+        }
+        return out;
     }
 
     private static int doRun(Path caseDir, boolean wantTrace, boolean wantJson) {

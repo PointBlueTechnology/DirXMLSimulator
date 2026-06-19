@@ -359,13 +359,27 @@ ldapDnTree=ACME-TREE                 # tree name for slash-form DN values
 Use `ldap=` with or without `shim=`. With a shim, the shim's back-channel queries
 go to LDAP too; without one, only the policy chain's queries do.
 
-## GCV definitions (`gcv.xml`)
+## GCV definitions (`gcv.xml` / `gcv.<name>=`)
 
-If you supply GCVs by hand, each `<definition>` **must** have a `display-name`
-attribute or the engine rejects the whole block:
+GCVs come from the config source (a **full driver-set source** — project, LDIF, or
+live — carries DriverSet-scope GCVs; a single-driver export may not). You can supply
+or override values two ways:
 
-```xml
-<nds><configuration-values><definitions>
-  <definition name="gcv.MyFlag" display-name="My Flag" type="boolean"><value>true</value></definition>
-</definitions></configuration-values></nds>
-```
+- **`gcv.<name>=<value>` in `case.properties`** — quickest, for scalars:
+  ```properties
+  gcv.idv.dit.data.users = data\\users
+  gcv.MyFlag = true
+  ```
+  Merged last, so it overrides the source and `gcv.xml`.
+- **A case-local `gcv.xml`** — for structured GCVs. Each `<definition>` **must** have
+  a `display-name` or the engine rejects the whole block:
+  ```xml
+  <nds><configuration-values><definitions>
+    <definition name="gcv.MyFlag" display-name="My Flag" type="boolean"><value>true</value></definition>
+  </definitions></configuration-values></nds>
+  ```
+
+`run`/`step`/`test` print `WARNING: GCV(s) referenced but not defined` when a policy
+uses a GCV (`<token-global-variable name="…"/>`) that nothing in scope defines —
+supply it via either mechanism, or a fuller source. (Engine `dirxml.auto.*` GCVs are
+provided automatically and never warned.)
