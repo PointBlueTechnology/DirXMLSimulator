@@ -6,6 +6,10 @@ XDS your policies produce is validated against the actual connector — and,
 optionally, so destination/IDV queries are answered from a **live eDirectory over
 LDAP** instead of author-supplied state.
 
+> For the day-to-day workflow of developing a shim in its own IntelliJ project and
+> testing it through this harness, see the how-to:
+> [shim-dev-workflow.md](shim-dev-workflow.md).
+
 Grounded in a working precedent: the `offline/` package in the **ClaimsCenter**
 driver project already drives `CCDriverShim` headlessly and converts XDS queries
 to LDAP. This note generalizes that into the simulator and fixes the one part
