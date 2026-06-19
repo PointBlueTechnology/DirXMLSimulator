@@ -126,6 +126,63 @@ will add a correctness oracle by diffing against the live engine.)
 - **Subscriber channel** for shim-style output; publisher *policy* chains harvest
   too.
 
+## `compare`: diff two policy versions directly
+
+When you don't have goldens yet — or just want a quick "did this edit change
+anything?" — `compare` runs the **same input through two policy sets** and shows
+where they diverge, stage by stage:
+
+```bash
+bin/sim compare cases/my-case --against ../driver-config/CyberArk-v2.xml
+```
+
+It runs the case as-is (**A** = whatever config source the case already declares —
+`export=`, `project=`, `ldifConfig=`, or `ldapConfig=`) and again with that source
+swapped for `--against` (**B**, the same *kind* of source), then reports:
+
+```
+compare cases/my-case
+  A: export=../CyberArk.xml
+  B: export=/abs/CyberArk-v2.xml
+  ────────────────────────────────────────
+  matching          same
+  create            same
+  command           DIFFERS   first difference at offset 412: …
+  ────────────────────────────────────────
+  final output: DIFFERS (first diverges at 'command')
+  6 stages: 5 identical, 1 differ
+```
+
+- **Exit code**: 0 if the final output is identical, 1 if it differs — usable as a
+  gate on its own.
+- **Per-stage view pinpoints the rule set that first changed the result** — and it
+  surfaces the subtle case where *intermediate* stages diverge but the chains
+  reconverge to an identical final output.
+- Ideal for **two git revisions of the same export** (check one out as
+  `--against`), or an edited copy vs the committed one — no goldens to record first.
+
+`compare` complements goldens: use it for ad-hoc "what changed" exploration;
+use `harvest` + `test-all` for the standing regression gate.
+
+## Machine-readable output (`--json`)
+
+`run`, `step`, `test`, and `compare` accept `--json` (and `test-all` takes
+`--json <file>`), emitting one structured object/array instead of human text — so
+an **agent or script can parse the result** instead of scraping the console:
+
+```bash
+bin/sim test cases/my-case --json
+# {"command":"test","case":"…","result":"PASS","output":{"checked":true,"equal":true,"diff":null},"directory":…}
+
+bin/sim step cases/my-case --json | jq '.stages[] | select(.changed)'   # only the stages that changed
+bin/sim compare cases/my-case --against v2.xml --json | jq '.finalSame'
+```
+
+`step --json` carries each stage's input/output XDS, queries, commands, trace, and
+error; `run --json` the per-stage summary and final output (plus trace with
+`--trace`). This is what lets an agent drive the edit → run → read → edit loop
+without brittle text parsing.
+
 ## Putting it in CI/CD
 
 The payoff: **policy changes get the same regression gate as application code.**

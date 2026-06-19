@@ -172,14 +172,16 @@ public final class BatchRunner {
         return sb.toString();
     }
 
-    /** A compact JSON array of results (hand-built; no JSON dependency). */
+    /** A compact JSON array of results. */
     public static String toJson(List<CaseResult> results) {
         StringBuilder sb = new StringBuilder("[\n");
         for (int i = 0; i < results.size(); i++) {
             CaseResult r = results.get(i);
-            sb.append(String.format(
-                "  {\"name\": \"%s\", \"outcome\": \"%s\", \"millis\": %d, \"detail\": \"%s\"}",
-                json(r.name), r.outcome, r.millis, json(r.detail)));
+            sb.append("  ").append(Json.obj(
+                "name", Json.q(r.name),
+                "outcome", Json.q(r.outcome.name()),
+                "millis", Long.toString(r.millis),
+                "detail", Json.q(r.detail)));
             sb.append(i < results.size() - 1 ? ",\n" : "\n");
         }
         sb.append("]\n");
@@ -219,27 +221,5 @@ public final class BatchRunner {
     private static String xml(String s) {
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
             .replace("\"", "&quot;");
-    }
-
-    private static String json(String s) {
-        StringBuilder b = new StringBuilder();
-        for (int i = 0; i < s.length(); i++) {
-            char ch = s.charAt(i);
-            switch (ch) {
-                case '"' -> b.append("\\\"");
-                case '\\' -> b.append("\\\\");
-                case '\n' -> b.append("\\n");
-                case '\r' -> b.append("\\r");
-                case '\t' -> b.append("\\t");
-                default -> {
-                    if (ch < 0x20) {
-                        b.append(String.format("\\u%04x", (int) ch));
-                    } else {
-                        b.append(ch);
-                    }
-                }
-            }
-        }
-        return b.toString();
     }
 }
