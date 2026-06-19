@@ -12,6 +12,9 @@ import java.nio.file.Paths;
  *   step   &lt;caseDir&gt;            print each stage: input/output/changed/queries/trace
  *   test   &lt;caseDir&gt;            run and diff vs expected-*.xds; exit !=0 on mismatch
  *   test-all &lt;dir&gt;             run every case under dir; summary + CI reports; exit !=0 on any fail
+ *   compare &lt;caseDir&gt; --against &lt;cfg&gt;  same input through two policy sets; per-stage divergence
+ *
+ *   run/step/test/compare accept --json for structured output.
  *   record &lt;caseDir&gt;            run and write expected-output.xds / expected-directory.xds
  *   harvest &lt;cfgDir&gt; &lt;outDir&gt;   mint a regression corpus from real Event Logger DB events
  * </pre>
@@ -94,17 +97,21 @@ public final class Cli {
         String cmd = args[0];
         Path caseDir = Paths.get(args[1]);
         boolean wantTrace = hasFlag(args, "--trace");
+        boolean wantJson = hasFlag(args, "--json");
 
         try {
             switch (cmd) {
                 case "run":
-                    System.exit(doRun(caseDir, wantTrace));
+                    System.exit(doRun(caseDir, wantTrace, wantJson));
                     break;
                 case "step":
-                    System.exit(doStep(caseDir, hasFlag(args, "--rules")));
+                    System.exit(doStep(caseDir, hasFlag(args, "--rules"), wantJson));
                     break;
                 case "test":
-                    System.exit(doTest(caseDir));
+                    System.exit(doTest(caseDir, wantJson));
+                    break;
+                case "compare":
+                    System.exit(doCompare(caseDir, flagValue(args, "--against"), wantJson));
                     break;
                 case "record":
                     System.exit(doRecord(caseDir));
@@ -167,10 +174,26 @@ public final class Cli {
         }
     }
 
-    private static int doRun(Path caseDir, boolean wantTrace) {
+    private static int doRun(Path caseDir, boolean wantTrace, boolean wantJson) {
         Case c = Case.load(caseDir);
-        warnDiagnostics(c);
         ChannelSimulator.Result r = c.run();
+        if (wantJson) {
+            java.util.List<String> stages = new java.util.ArrayList<>();
+            for (StageSnapshot s : r.stages) {
+                stages.add(Json.obj("name", Json.q(s.stageName),
+                    "changed", bool(s.changed()),
+                    "queries", Integer.toString(s.queries.size()),
+                    "commands", Integer.toString(s.commands.size())));
+            }
+            System.out.println(Json.obj(
+                "command", Json.q("run"),
+                "case", Json.q(caseDir.toString()),
+                "stages", Json.arr(stages),
+                "finalOutput", Json.q(r.finalXds),
+                "trace", wantTrace ? Json.q(r.fullTrace) : "null"));
+            return 0;
+        }
+        warnDiagnostics(c);
         System.out.println("# stages: " + r.stages.size());
         for (StageSnapshot s : r.stages) {
             System.out.println("  - " + s.stageName + (s.changed() ? " [changed]" : " [no-op]")
@@ -186,10 +209,29 @@ public final class Cli {
         return 0;
     }
 
-    private static int doStep(Path caseDir, boolean perRule) {
+    private static int doStep(Path caseDir, boolean perRule, boolean wantJson) {
         Case c = Case.load(caseDir);
-        warnDiagnostics(c);
         ChannelSimulator.Result r = c.sim.run(c.input, perRule);
+        if (wantJson) {
+            java.util.List<String> stages = new java.util.ArrayList<>();
+            for (StageSnapshot s : r.stages) {
+                stages.add(Json.obj(
+                    "name", Json.q(s.stageName),
+                    "changed", bool(s.changed()),
+                    "error", Json.q(s.error),
+                    "input", Json.q(s.inputXds),
+                    "output", Json.q(s.outputXds),
+                    "queries", Json.strArr(s.queries),
+                    "commands", Json.strArr(s.commands),
+                    "trace", Json.q(s.trace)));
+            }
+            System.out.println(Json.obj(
+                "command", Json.q("step"),
+                "case", Json.q(caseDir.toString()),
+                "stages", Json.arr(stages)));
+            return 0;
+        }
+        warnDiagnostics(c);
         for (StageSnapshot s : r.stages) {
             System.out.println("============================================================");
             System.out.println("STAGE: " + s.stageName
@@ -219,10 +261,13 @@ public final class Cli {
         return 0;
     }
 
-    private static int doTest(Path caseDir) {
+    private static int doTest(Path caseDir, boolean wantJson) {
         Case c = Case.load(caseDir);
-        warnDiagnostics(c);
         ChannelSimulator.Result r = c.run();
+        if (wantJson) {
+            return doTestJson(caseDir, c, r);
+        }
+        warnDiagnostics(c);
         boolean ok = true;
 
         if (Files.exists(c.expectedOutput)) {
@@ -246,6 +291,32 @@ public final class Cli {
         }
 
         System.out.println(ok ? "RESULT: PASS" : "RESULT: FAIL");
+        return ok ? 0 : 1;
+    }
+
+    /** Structured form of {@code test}: same checks, emitted as one JSON object. */
+    private static int doTestJson(Path caseDir, Case c, ChannelSimulator.Result r) {
+        boolean ok = true;
+        String outBlock = Json.obj("checked", "false");
+        if (Files.exists(c.expectedOutput)) {
+            XmlCompare.Diff d = XmlCompare.compare(read(c.expectedOutput), r.finalXds);
+            ok = d.equal;
+            outBlock = Json.obj("checked", "true", "equal", bool(d.equal),
+                "diff", d.equal ? "null" : Json.q(d.message));
+        }
+        String dirBlock = "null";
+        if (Files.exists(c.expectedDirectory)) {
+            XmlCompare.Diff d = XmlCompare.compare(read(c.expectedDirectory), c.directory.dumpState());
+            ok = ok && d.equal;
+            dirBlock = Json.obj("checked", "true", "equal", bool(d.equal),
+                "diff", d.equal ? "null" : Json.q(d.message));
+        }
+        System.out.println(Json.obj(
+            "command", Json.q("test"),
+            "case", Json.q(caseDir.toString()),
+            "result", Json.q(ok ? "PASS" : "FAIL"),
+            "output", outBlock,
+            "directory", dirBlock));
         return ok ? 0 : 1;
     }
 
@@ -293,6 +364,125 @@ public final class Cli {
             r.flagged > 0 ? "   (" + r.flagged + " query-light — see HARVEST.md)" : "");
         System.out.println("run them:  bin/sim test-all " + r.outDir);
         return 0;
+    }
+
+    /** Config-source keys; a case uses exactly one (the one {@code compare} swaps). */
+    private static final String[] CONFIG_SOURCE_KEYS = {"export", "project", "ldifConfig", "ldapConfig"};
+
+    /**
+     * Run the same case through two policy sets and report where they diverge: the
+     * case as-is (A) vs the same input/data with its config source replaced by
+     * {@code --against} (B). Exit 1 if the final output differs.
+     */
+    private static int doCompare(Path caseDir, String against, boolean wantJson) throws Exception {
+        if (against == null || against.isBlank()) {
+            System.err.println("usage: compare <caseDir> --against <export|project|ldif|driverSetDN> [--json]");
+            return 2;
+        }
+        java.util.Properties a = new java.util.Properties();
+        Path pf = caseDir.resolve("case.properties");
+        if (Files.exists(pf)) {
+            try (var in = Files.newInputStream(pf)) {
+                a.load(in);
+            }
+        }
+        String srcKey = null;
+        for (String k : CONFIG_SOURCE_KEYS) {
+            if (a.getProperty(k) != null && !a.getProperty(k).isBlank()) {
+                srcKey = k;
+                break;
+            }
+        }
+        if (srcKey == null) {
+            System.err.println("ERROR: compare needs a driver config source (export=/project=/"
+                + "ldifConfig=/ldapConfig=) in " + pf + "; chain.txt cases aren't comparable");
+            return 2;
+        }
+        // ldapConfig is a DN (verbatim); the others are a path → absolutize from CWD.
+        String bValue = "ldapConfig".equals(srcKey)
+            ? against.trim() : Paths.get(against.trim()).toAbsolutePath().normalize().toString();
+
+        Path tmp = Files.createTempDirectory("sim-compare-");
+        try {
+            for (String f : new String[]{"input.xds", "directory.xds", "gcv.xml", "rest-response.json"}) {
+                Path src = caseDir.resolve(f);
+                if (Files.exists(src)) {
+                    Files.copy(src, tmp.resolve(f));
+                }
+            }
+            Files.writeString(tmp.resolve("case.properties"), CaseProps.render(
+                caseDir, a, java.util.Set.of(), java.util.Map.of(srcKey, bValue),
+                "generated by `sim compare` — config swapped to " + against));
+
+            ChannelSimulator.Result ra = Case.load(caseDir).run();
+            ChannelSimulator.Result rb = Case.load(tmp).run();
+            Comparer.Comparison cmp = Comparer.diff(ra, rb);
+
+            if (wantJson) {
+                printCompareJson(caseDir, srcKey, a.getProperty(srcKey), against, cmp);
+            } else {
+                printCompareHuman(caseDir, srcKey, a.getProperty(srcKey), against, cmp);
+            }
+            return cmp.finalSame ? 0 : 1;
+        } finally {
+            deleteRecursive(tmp);
+        }
+    }
+
+    private static void printCompareHuman(Path caseDir, String srcKey, String aVal, String bVal,
+                                          Comparer.Comparison cmp) {
+        System.out.println("compare " + caseDir);
+        System.out.println("  A: " + srcKey + "=" + aVal);
+        System.out.println("  B: " + srcKey + "=" + bVal);
+        System.out.println("  " + "─".repeat(40));
+        int diff = 0;
+        for (Comparer.StageDiff s : cmp.stages) {
+            boolean changed = !s.same;
+            if (changed) {
+                diff++;
+            }
+            System.out.printf("  %-22s %s%s%n", s.name, changed ? "DIFFERS" : "same",
+                changed && !s.detail.isBlank() ? "   " + s.detail.split("\n", 2)[0] : "");
+        }
+        System.out.println("  " + "─".repeat(40));
+        System.out.println("  final output: " + (cmp.finalSame ? "IDENTICAL"
+            : "DIFFERS (first diverges at '" + cmp.firstDivergesAt + "')"));
+        System.out.printf("  %d stages: %d identical, %d differ%n",
+            cmp.stages.size(), cmp.stages.size() - diff, diff);
+    }
+
+    private static void printCompareJson(Path caseDir, String srcKey, String aVal, String bVal,
+                                         Comparer.Comparison cmp) {
+        java.util.List<String> stages = new java.util.ArrayList<>();
+        for (Comparer.StageDiff s : cmp.stages) {
+            stages.add(Json.obj("name", Json.q(s.name), "presentIn", Json.q(s.presentIn),
+                "same", bool(s.same), "diff", s.detail.isBlank() ? "null" : Json.q(s.detail)));
+        }
+        System.out.println(Json.obj(
+            "command", Json.q("compare"),
+            "case", Json.q(caseDir.toString()),
+            "configKey", Json.q(srcKey),
+            "a", Json.q(aVal),
+            "b", Json.q(bVal),
+            "finalSame", bool(cmp.finalSame),
+            "firstDivergesAt", Json.q(cmp.firstDivergesAt),
+            "finalDiff", cmp.finalDetail.isBlank() ? "null" : Json.q(cmp.finalDetail),
+            "stages", Json.arr(stages)));
+    }
+
+    private static void deleteRecursive(Path dir) throws java.io.IOException {
+        if (!Files.exists(dir)) {
+            return;
+        }
+        try (var walk = Files.walk(dir)) {
+            walk.sorted(java.util.Comparator.reverseOrder()).forEach(p -> {
+                try {
+                    Files.delete(p);
+                } catch (java.io.IOException ignored) {
+                    // best-effort temp cleanup
+                }
+            });
+        }
     }
 
     private static int doRecord(Path caseDir) {
@@ -512,7 +702,7 @@ public final class Cli {
 
         Path sample = Paths.get("cases/copy-surname");
         if (Files.isDirectory(sample)) {
-            int rc = doTest(sample);
+            int rc = doTest(sample, false);
             System.out.println("  sample case cases/copy-surname: " + (rc == 0 ? "PASS" : "FAIL"));
             ok &= rc == 0;
         }
@@ -530,6 +720,11 @@ public final class Cli {
             }
         }
         return false;
+    }
+
+    /** JSON boolean literal. */
+    private static String bool(boolean b) {
+        return b ? "true" : "false";
     }
 
     /** Value of a {@code --flag <value>} option, or null if absent. */
@@ -565,10 +760,11 @@ public final class Cli {
 
     private static void usage() {
         System.err.println("usage:");
-        System.err.println("  run    <caseDir> [--trace]   run chain, print final output (+ trace)");
-        System.err.println("  step   <caseDir> [--rules]   per-stage (or per-rule) input/output/queries/trace");
-        System.err.println("  test   <caseDir>             diff vs expected-*.xds; exit !=0 on mismatch");
+        System.err.println("  run    <caseDir> [--trace] [--json]   run chain, print final output (+ trace)");
+        System.err.println("  step   <caseDir> [--rules] [--json]   per-stage (or per-rule) input/output/queries/trace");
+        System.err.println("  test   <caseDir> [--json]    diff vs expected-*.xds; exit !=0 on mismatch");
         System.err.println("  test-all <dir> [--junit f] [--json f]  run every case; CI summary + exit code");
+        System.err.println("  compare <caseDir> --against <cfg> [--json]  two policy sets, same input; divergence");
         System.err.println("  record <caseDir>             write goldens");
         System.err.println("  extract <traceFile> <outDir> mine a DSTrace log into a case");
         System.err.println("  dxcache <caseDir>            read a driver's event cache (live) into the case");

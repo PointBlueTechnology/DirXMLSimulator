@@ -134,6 +134,7 @@ bin/sim run    <caseDir> [--trace]   # run chain; final output (+ full trace)
 bin/sim step   <caseDir> [--rules]   # per-stage (or with --rules, per-rule) i/o/queries/trace
 bin/sim test   <caseDir>             # diff vs expected-*.xds; exit 0 pass, 1 mismatch
 bin/sim test-all <dir> [--junit f] [--json f]  # run every case under <dir>; CI summary + exit code
+bin/sim compare <caseDir> --against <cfg>  # same input through two policy sets; per-stage divergence
 bin/sim record <caseDir>             # write expected-output.xds / expected-directory.xds
 bin/sim extract <trace> <outDir>     # mine a DSTrace log into a case (input + directory + samples)
 bin/sim dxcache <caseDir>            # read a stopped driver's event cache (live) into the case
@@ -149,7 +150,15 @@ see every case that changed; it exits non-zero if any case FAILs or ERRORs.
 `harvest` builds that corpus from real Event Logger DB events (one case per event,
 current output captured as the golden) — a regression baseline from production
 traffic; goldens are *current* behavior (a change detector, not a correctness
-oracle). Full workflow + CI/CD: `docs/regression-testing.md`.
+oracle). `compare <caseDir> --against <cfg>` runs the same input through two policy
+sets (e.g. two git revisions of an export) and reports per-stage divergence — handy
+for "did my edit change anything?" before goldens exist. Full workflow + CI/CD:
+`docs/regression-testing.md`.
+
+**Parse results, don't scrape:** `run`, `step`, `test`, and `compare` accept
+`--json` (and `test-all --json <file>`) for structured output — prefer it when
+driving the loop programmatically. `step --json` gives each stage's input/output
+XDS, queries, commands, trace, and error.
 
 ## What each command prints (so you can interpret it without a trial run)
 

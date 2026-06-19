@@ -172,8 +172,12 @@ bin/sim run    <caseDir> [--trace]   # run chain, print final output (+ trace)
 bin/sim step   <caseDir>             # per-stage input/output/queries/trace
 bin/sim test   <caseDir>             # diff vs expected-*.xds; exit !=0 on mismatch
 bin/sim test-all <dir> [--junit f] [--json f]  # run every case under <dir>; CI summary + exit code
+bin/sim compare <caseDir> --against <cfg>  # same input through two policy sets; per-stage divergence
 bin/sim record <caseDir>             # write expected-output.xds / expected-directory.xds
 ```
+
+`run`, `step`, `test`, and `compare` accept `--json` for structured output an
+agent or script can parse.
 
 `test-all` discovers every case (a directory with an `input.xds`) under `<dir>`,
 runs each as `test` does, prints a PASS/FAIL/ERROR/SKIP summary, and exits non-zero

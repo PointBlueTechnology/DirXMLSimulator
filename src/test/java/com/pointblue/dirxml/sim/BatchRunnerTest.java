@@ -62,9 +62,9 @@ public class BatchRunnerTest {
     public void jsonIsWellFormedAndEscaped() {
         String j = BatchRunner.toJson(List.of(
             r("x", BatchRunner.Outcome.FAIL, "line1\n\"quoted\"")));
-        assertTrue(j.contains("\"name\": \"x\""));
-        assertTrue(j.contains("\"outcome\": \"FAIL\""));
-        assertTrue(j.contains("\"millis\": 12"));
+        assertTrue(j.contains("\"name\":\"x\""));
+        assertTrue(j.contains("\"outcome\":\"FAIL\""));
+        assertTrue(j.contains("\"millis\":12"));
         assertTrue(j.contains("line1\\n\\\"quoted\\\""));
     }
 

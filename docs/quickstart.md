@@ -357,11 +357,16 @@ bin/sim dxcache <caseDir>            read a stopped driver's event cache (live) 
 bin/sim dbevents <caseDir>           list/pick logged events from the Event Logger DB
 bin/sim test   <caseDir>             diff vs goldens; exit 0 pass, 1 mismatch
 bin/sim test-all <dir> [--junit f] [--json f]  run every case under <dir>; CI summary + exit code
+bin/sim compare <caseDir> --against <cfg>  same input through two policy sets; per-stage divergence
 bin/sim harvest <configDir> <outDir> [--refresh]  mint a regression corpus from real events
 bin/sim record <caseDir>             write expected-output.xds / expected-directory.xds
 bin/sim extract <trace> <outDir>     mine a DSTrace log into a case
 bin/sim doctor                       setup self-check
 ```
+
+`run`, `step`, `test`, and `compare` accept `--json` for structured output. See
+[regression-testing.md](regression-testing.md) for `test-all`, `harvest`, and
+`compare` in depth.
 
 ## Letting an agent drive
 
