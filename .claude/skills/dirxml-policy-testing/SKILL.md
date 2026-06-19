@@ -96,8 +96,9 @@ carry** — most importantly **mapping tables**: a `<token-map>` (the DirXML Scr
 `Map` token) references a table by name (e.g. `table="..\..\Library\LocCodeMap"`,
 or a GCV-expanded `table="$tableDN$"`). The table lives in the driver-set
 **Library**, so a single-driver export won't include it. The simulator **does
-resolve** mapping tables when they're available — from a full driver-set export, an
-LDIF dump, or a case-local `mapping-tables/` dir — but if a referenced table is in
+resolve** mapping tables when they're available — auto-extracted from a full
+driver-set export, a Designer project, an LDIF dump, or live LDAP (`ldapConfig=`),
+or supplied via a case-local `mapping-tables/` dir — but if a referenced table is in
 none of those, **ask for it before running** rather than letting the lookup fail or
 silently return nothing (see the table).
 
@@ -113,7 +114,7 @@ How to recognize each gap and what to request:
 | **A GCV value** | a GCV resolves empty / the policy behaves as if it's unset | The value (or a `gcv.xml` override); a stale value may mean they need a fresher export. |
 | **A Java extension class** | `WARNING: Java extension classes not on the classpath` | The jar that defines it, to stage in `lib/`. |
 | **An `es:` function** | a stage `[ERROR]` "function not found" | The ECMAScript resource (from the export/project, or a `.js` for `ecmascript/`). |
-| **A mapping table** (`Map` token) | a policy references a `<token-map>` whose table isn't in your config source; at run a stage `[ERROR]` `Couldn't access map definition '…'` (code -9192) | The referenced `<mapping-table>`. It's a driver-set **Library** resource, so a **full driver-set export** or an **LDIF** dump of the driver set carries it (a single-driver export won't). Or drop it into the case as `mapping-tables/<TableName>.xml` (the filename is the table name; content is the `<mapping-table>…</mapping-table>` — from Designer, open the mapping-table resource). Once available, the `Map` token resolves normally. |
+| **A mapping table** (`Map` token) | a policy references a `<token-map>` whose table isn't in your config source; at run a stage `[ERROR]` `Couldn't access map definition '…'` (code -9192) | The referenced `<mapping-table>`. It's a driver-set **Library** resource: a **full driver-set export**, a **Designer project**, an **LDIF** dump, or **live LDAP** (`ldapConfig=`) all supply it automatically (a single-driver export won't). Or drop it into the case as `mapping-tables/<TableName>.xml` (filename = table name; content is the `<mapping-table>…</mapping-table>`). Once available, the `Map` token resolves normally. |
 | **Schema** (validation) | schema warnings never fire / you can't catch typos | A `project=`, a `schema=<*_schema.xml or project dir>`, or — with a live connection — `schema=ldap` (reads the eDir subschema directly, no project). |
 | **(Shim testing)** shim jar / app auth | `shim=` load error, or the shim's auth fails | The connector jar (`shimJar=`, stage in `lib/`) and the app password (`shimAuthPassword.named=`). |
 

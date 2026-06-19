@@ -8,12 +8,13 @@ use them load and run headlessly, instead of failing.
 > **Shipped:** `NdsStreamProtocol` (a `vnd.nds.stream:` URL handler) + `MappingTableStore`
 > (name-keyed) + base-URI plumbing in `PolicyStage` (only for Map-using policies) +
 > `MappingTableSource` (case-local `mapping-tables/` dir, and extraction from a
-> driver/driver-set **export** and **LDIF**). Wired in `Case.load`. Validated: the
-> `Map` token that fails today with VRDException -9192 now resolves end-to-end
-> (CA→West) from a case-local table; extraction pulls all 6 tables from the real
-> `RFI-DriverSet.xml`. **Deferred:** Designer-**project** resource extraction (use a
-> `mapping-tables/` dir meanwhile); live read from the vault. The approach below is
-> what was built.
+> driver/driver-set **export**, a **Designer project**, an **LDIF** dump, and
+> **live LDAP**). Wired in `Case.load`. Validated end-to-end: the `Map` token that
+> fails today with VRDException -9192 now resolves (CA→West) from a case-local
+> table; extraction pulls all 6 tables from the real `RFI-DriverSet.xml`, 5 from a
+> real Designer workspace, and **5 live from the IG4 vault** (over LDAP). **Deferred:**
+> live read from the vault *on demand* (we pre-load from the driver-set subtree
+> instead); entitlement codemaps (separate). The approach below is what was built.
 
 Grounded in a confirmed investigation (empirical + decompiled engine); see
 "Background" for the exact failure and root cause.
@@ -159,8 +160,12 @@ same flexible way it sources everything else:
   `<resource>` — under a `<policy-library>` (the common case, as in
   `RFI-DriverSet.xml`) **or** under a driver — collecting `name → <mapping-table>`.
   This sits alongside the existing resource extractors
-  (`DriverExport.ecmaScriptSources()` etc.); a project keeps the same resources as
-  files, and an LDIF/LDAP dump carries them as the resource objects' `XmlData`.
+  (`DriverExport.ecmaScriptSources()` etc.). A **Designer project** keeps each table
+  as a `.MappingTableResource_` object (meta `name=` + `_contents.xml`). An
+  **LDIF dump or live LDAP** carries it as a `DirXML-Resource` object whose content
+  is in **`DirXML-Data`** (not `XmlData` — that's policies; the live reader requests
+  both). Live reads pre-load every table in the driver-set subtree at config-read
+  time.
 - **A case-local `mapping-tables/` directory.** Drop one `<mapping-table>` XML per
   table (filename = the table name/DN). Zero-dependency, always available, and the
   natural way for an agent to supply a table when the config source lacks it — it

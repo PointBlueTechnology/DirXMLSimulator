@@ -124,12 +124,14 @@ public final class JndiLdapSearch implements LdapQueryProcessor.Search {
      * and decoded as UTF-8 text. Throws if the subtree can't be read.
      */
     public LdifDriverSource readDriverConfig(String driverSetDn) {
-        Set<String> binary = Set.of("xmldata", "dirxml-shimconfiginfo", "dirxml-configvalues",
-            "dirxml-driverfilter", "dirxml-enginecontrolvalues");
+        Set<String> binary = Set.of("xmldata", "dirxml-data", "dirxml-shimconfiginfo",
+            "dirxml-configvalues", "dirxml-driverfilter", "dirxml-enginecontrolvalues");
         String[] want = {"objectClass", "cn", "XmlData", "DirXML-Policies",
             "DirXML-ShimConfigInfo", "DirXML-ConfigValues", "DirXML-JavaModule",
             "DirXML-DriverFilter", "DirXML-ShimAuthServer", "DirXML-ShimAuthID",
-            "DirXML-EngineControlValues"};
+            "DirXML-EngineControlValues",
+            // DirXML-Resource content (mapping tables) lives in DirXML-Data, not XmlData
+            "DirXML-Data", "DirXML-ContentType"};
         LdapContext ctx = null;
         try {
             ctx = connect(binary);

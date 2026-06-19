@@ -313,7 +313,12 @@ public final class LdifDriverSource {
             if (!e.hasClass("DirXML-Resource")) {
                 continue;
             }
-            String xml = e.first("XmlData");
+            // Resource content is in DirXML-Data (live eDir / LDIF dump); some
+            // exports use XmlData. Take whichever holds the mapping table.
+            String xml = e.first("DirXML-Data");
+            if (xml == null || !xml.contains("<mapping-table")) {
+                xml = e.first("XmlData");
+            }
             if (xml == null || !xml.contains("<mapping-table")) {
                 continue;
             }
