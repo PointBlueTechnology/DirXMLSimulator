@@ -68,10 +68,10 @@ public final class Case {
             // Config source: a driver export, or a Designer project + driver name.
             String exportRef = p.getProperty("export");
             DriverExport export = null;
-            GCDefinitions gcv = new GCDefinitions();
+            GCDefinitions sourceGcv = new GCDefinitions();
             if (exportRef != null && !exportRef.isBlank()) {
                 export = DriverExport.load(caseDir.resolve(exportRef.trim()));
-                gcv = export.gcvDefinitions();
+                sourceGcv = export.gcvDefinitions();
             }
             String projectRef = p.getProperty("project");
             String projectDriver = p.getProperty("driver");
@@ -82,7 +82,7 @@ public final class Case {
                     throw new IllegalArgumentException(
                         "project= requires driver=<name>; drivers in project: " + project.driverNames());
                 }
-                gcv = project.gcvDefinitions(projectDriver);
+                sourceGcv = project.gcvDefinitions(projectDriver);
             }
             // Third config source: an LDIF/LDAP export of the live Identity Vault —
             // an LDIF file (ldifConfig=) or read live from LDAP (ldapConfig=<DriverSetDN>).
@@ -103,9 +103,13 @@ public final class Case {
                     throw new IllegalArgumentException(
                         "ldifConfig=/ldapConfig= requires driver=<name>; drivers: " + ldifConfig.driverNames());
                 }
-                gcv = ldifConfig.gcvDefinitions(projectDriver);
+                sourceGcv = ldifConfig.gcvDefinitions(projectDriver);
             }
-            // A case-local gcv.xml overlays/overrides the export GCVs.
+            // GCDefinitions.merge() keeps the FIRST definition of a name, so build
+            // the scope in descending precedence: gcv.<name>= overrides from
+            // case.properties, then a case-local gcv.xml, then the source's GCVs.
+            GCDefinitions gcv = new GCDefinitions();
+            applyGcvOverrides(gcv, p);
             Path gcvFile = caseDir.resolve("gcv.xml");
             if (Files.exists(gcvFile)) {
                 try {
@@ -116,10 +120,7 @@ public final class Case {
                     System.err.println("warning: could not parse gcv.xml: " + t);
                 }
             }
-
-            // Direct GCV overrides: gcv.<name>=<value> in case.properties, merged
-            // last so they win over the source GCVs and gcv.xml.
-            applyGcvOverrides(gcv, p);
+            gcv.merge(sourceGcv);
 
             EngineContext ctx = EngineContext.create(driverDN, dnFormat, fromNDS, gcv);
             ctx.setTraceLevel(traceLevel);

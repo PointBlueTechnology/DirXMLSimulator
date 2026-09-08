@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <em>registered</em> table name as a whole DN component — robust to the precise
  * URL shape and to literal vs GCV-expanded references alike.
  */
-final class MappingTableStore {
+public final class MappingTableStore {
 
     private MappingTableStore() {
     }
@@ -24,23 +24,23 @@ final class MappingTableStore {
     private static final Map<String, String> TABLES = new ConcurrentHashMap<>();
 
     /** Register a table's {@code <mapping-table>} XML under its name. */
-    static void register(String name, String mappingTableXml) {
+    public static void register(String name, String mappingTableXml) {
         if (name != null && !name.isBlank() && mappingTableXml != null) {
             TABLES.put(name, mappingTableXml);
         }
     }
 
     /** Forget all tables (between cases in a long-lived JVM). */
-    static void clear() {
+    public static void clear() {
         TABLES.clear();
     }
 
-    static boolean isEmpty() {
+    public static boolean isEmpty() {
         return TABLES.isEmpty();
     }
 
     /** The {@code <mapping-table>} XML for a registered name, or null. */
-    static String byName(String name) {
+    public static String byName(String name) {
         return TABLES.get(name);
     }
 
