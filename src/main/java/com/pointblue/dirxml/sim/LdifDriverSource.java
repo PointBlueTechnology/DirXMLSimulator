@@ -77,20 +77,26 @@ public final class LdifDriverSource {
 
     /** One directory entry: its DN and attributes (values as text; XML blobs decoded). */
     public static final class Entry {
-        final String dn;
+        public final String dn;
         final Map<String, List<String>> attrs;
         public Entry(String dn, Map<String, List<String>> attrs) {
             this.dn = dn;
             this.attrs = attrs;
         }
-        String first(String name) {
+        /** First value of an attribute (case-insensitive name), or null. */
+        public String first(String name) {
             List<String> v = attrs.get(name.toLowerCase());
             return (v == null || v.isEmpty()) ? null : v.get(0);
         }
-        List<String> all(String name) {
+        /** All values of an attribute (case-insensitive name); empty if absent. */
+        public List<String> all(String name) {
             return attrs.getOrDefault(name.toLowerCase(), List.of());
         }
-        boolean hasClass(String oc) {
+        /** Attribute names present (lower-cased). */
+        public java.util.Set<String> attributeNames() {
+            return attrs.keySet();
+        }
+        public boolean hasClass(String oc) {
             for (String v : all("objectclass")) {
                 if (v.equalsIgnoreCase(oc)) {
                     return true;
@@ -131,6 +137,11 @@ public final class LdifDriverSource {
             }
         }
         return s;
+    }
+
+    /** Every entry read (LDIF file or live subtree), in source order — for model builders. */
+    public java.util.Collection<Entry> entries() {
+        return java.util.Collections.unmodifiableCollection(byDn.values());
     }
 
     public List<String> driverNames() {
