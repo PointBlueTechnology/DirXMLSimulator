@@ -41,6 +41,11 @@ public final class EngineContext {
         return name != null && gcv.getValue(name) != null;
     }
 
+    /** The GCVs in scope — what the engine substitutes for {@code ~name~} when it loads a policy. */
+    public GCDefinitions gcvDefinitions() {
+        return gcv;
+    }
+
     /** Faking config for external actions (REST/email/RBPM/…). Enabled by default. */
     public FakeActions.Config fakeConfig() {
         return fakeConfig;
@@ -77,19 +82,29 @@ public final class EngineContext {
     }
 
     /**
-     * The engine auto-populates {@code dirxml.auto.driverdn} (and friends) at
-     * runtime; exports don't carry them. Many real policies reference it (e.g. a
-     * {@code token-query} with {@code arg-dn(token-global-variable("dirxml.auto.driverdn"))}),
-     * so seed it from the driver DN when not already defined.
+     * The engine auto-populates the {@code dirxml.auto.*} GCVs at runtime —
+     * {@code driverdn}, {@code driverguid}, {@code treename} — and exports don't
+     * carry them. Real policies reference them both as tokens (e.g. a
+     * {@code token-query} with {@code arg-dn(token-global-variable("dirxml.auto.driverdn"))})
+     * and as {@code ~dirxml.auto.treename~} text, so seed them (driverdn from the
+     * driver DN; the others with stand-in values) when not already defined.
+     * {@code GCDefinitions.merge} keeps the first definition, so a value the case
+     * supplies wins.
      */
     private static void addAutoGcvs(GCDefinitions gcv, String driverDN) {
-        if (gcv.getValue("dirxml.auto.driverdn") != null) {
+        if (gcv.getValue("dirxml.auto.driverdn") != null
+            && gcv.getValue("dirxml.auto.treename") != null
+            && gcv.getValue("dirxml.auto.driverguid") != null) {
             return;
         }
         String esc = driverDN.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
         String doc = "<nds><configuration-values><definitions>"
             + "<definition name=\"dirxml.auto.driverdn\" display-name=\"Driver DN\" type=\"string\"><value>"
             + esc + "</value></definition>"
+            + "<definition name=\"dirxml.auto.driverguid\" display-name=\"Driver GUID\" type=\"string\"><value>"
+            + "00000000-0000-0000-0000-000000000000</value></definition>"
+            + "<definition name=\"dirxml.auto.treename\" display-name=\"Tree name\" type=\"string\"><value>"
+            + "SIM-TREE</value></definition>"
             + "</definitions></configuration-values></nds>";
         try {
             // construct(Node) looks for a <configuration-values> child of the node,

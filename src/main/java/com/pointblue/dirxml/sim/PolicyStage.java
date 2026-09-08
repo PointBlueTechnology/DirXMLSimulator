@@ -127,16 +127,18 @@ public final class PolicyStage {
     }
 
     /**
-     * If a DirXML Script policy uses a {@code Map} token, give its element a
-     * synthetic {@code vnd.nds.stream:} base URI so the engine resolves the token's
-     * relative table reference to a URL our handler serves from the local
-     * {@link MappingTableStore} (see {@code docs/mapping-tables-design.md}). Scoped
-     * to Map-using policies so it never changes resolution for any other policy. The
-     * exact base value is irrelevant — tables resolve by name — so a fixed,
+     * If a DirXML Script policy uses a {@code Map} token or an {@code <include>},
+     * give its element a synthetic {@code vnd.nds.stream:} base URI so the engine
+     * resolves the relative table / policy reference to a URL our handler serves
+     * from the local {@link MappingTableStore} (see {@code docs/mapping-tables-design.md};
+     * included policies register by name the same way tables do). Scoped to
+     * policies that need it so it never changes resolution for any other policy.
+     * The exact base value is irrelevant — objects resolve by name — so a fixed,
      * deep-enough path suffices.
      */
     private static void maybeEnableMappingTables(Element policy) {
-        if (Xds.descendantsByName(policy, "token-map").isEmpty()) {
+        if (Xds.descendantsByName(policy, "token-map").isEmpty()
+            && Xds.descendantsByName(policy, "include").isEmpty()) {
             return;
         }
         NdsStreamProtocol.ensureInstalled();
@@ -158,47 +160,84 @@ public final class PolicyStage {
         return text.length() > 60 ? text.substring(0, 57) + "…" : text;
     }
 
-    /** Build a stage from a policy element, choosing the processor by root name. */
+    /**
+     * Build a stage from a policy element, choosing the processor by root name.
+     *
+     * <p>As the engine does when it loads a policy from the vault, {@code ~gcv~}
+     * references in the policy text (any text or attribute — XPath expressions
+     * included) are replaced with the GCV's value before the policy is compiled
+     * ({@code GCDefinitions.apply}). A reference to a GCV that isn't defined is
+     * fatal in the engine (the driver fails to start with "Referenced value not
+     * found"), so it fails here too — define the GCV in the case's inputs.
+     */
     public static PolicyStage fromElement(String name, Element policy, EngineContext ctx) {
         try {
             RuleProcessor proc;
             String root = policy.getLocalName();
             String type = root;
+            // The processor compiles a copy with GCVs substituted; the original
+            // `policy` stays the source (rule names, references, diagnostics).
+            Element forProc = substituteGcvs(policy, ctx);
             // XSLT policies are <xsl:stylesheet>/<xsl:transform> in the XSLT namespace.
             if (PolicyLoader.XSLT_NS.equals(policy.getNamespaceURI())) {
-                proc = new XSLTRuleProcessor(policy, ctx.staticContext());
+                proc = new XSLTRuleProcessor(forProc, ctx.staticContext());
                 return new PolicyStage(name, proc, policy, "xslt");
             }
             switch (root) {
                 case "policy":
                     // Fake external actions (REST/email/RBPM/…) on a copy so they
-                    // never connect out; the original `policy` stays the source.
-                    Element forProc = policy;
+                    // never connect out.
                     if (ctx.fakeConfig().enabled && !FakeActions.externalActions(policy).isEmpty()) {
-                        forProc = Xds.parse(Xds.serializeElement(policy)).getDocumentElement();
+                        if (forProc == policy) {
+                            forProc = Xds.parse(Xds.serializeElement(policy)).getDocumentElement();
+                        }
                         FakeActions.rewrite(forProc, ctx.fakeConfig());
                     }
                     maybeEnableMappingTables(forProc);
                     proc = new DirXMLScriptProcessor(forProc, ctx.staticContext());
                     break;
                 case "style-sheet":
-                    proc = new XSLTRuleProcessor(policy, ctx.staticContext());
+                    proc = new XSLTRuleProcessor(forProc, ctx.staticContext());
                     type = "xslt";
                     break;
                 case "attr-name-map":
                 case "schema-mapping":
-                    proc = new SchemaMappingRuleProcessor(policy, ctx.staticContext());
+                    proc = new SchemaMappingRuleProcessor(forProc, ctx.staticContext());
                     break;
                 default:
                     // Default to DirXML Script; most authored policies are <policy>.
-                    maybeEnableMappingTables(policy);
-                    proc = new DirXMLScriptProcessor(policy, ctx.staticContext());
+                    maybeEnableMappingTables(forProc);
+                    proc = new DirXMLScriptProcessor(forProc, ctx.staticContext());
                     type = "policy";
             }
             return new PolicyStage(name, proc, policy, type);
         } catch (Exception e) {
             throw new RuntimeException("Failed to build stage '" + name + "': " + e, e);
         }
+    }
+
+    /**
+     * A copy of the policy with every {@code ~name~} replaced by the GCV's value,
+     * via the engine's own {@code GCDefinitions.apply(Node)}; the policy itself
+     * when it contains no tilde at all. Throws when a referenced GCV is undefined —
+     * the engine refuses to load such a policy.
+     */
+    private static Element substituteGcvs(Element policy, EngineContext ctx) {
+        String xml = Xds.serializeElement(policy);
+        if (xml.indexOf('~') < 0) {
+            return policy;
+        }
+        Element copy = Xds.parse(xml).getDocumentElement();
+        try {
+            ctx.gcvDefinitions().apply((org.w3c.dom.Node) copy);
+        } catch (com.novell.nds.dirxml.engine.gcv.GCValueNotFoundException e) {
+            String msg = e.getMessage() == null ? "" : e.getMessage();
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("name = '([^']*)'").matcher(msg);
+            String which = m.find() ? m.group(1) : "?";
+            throw new IllegalStateException("GCV '" + which + "' is referenced as ~" + which
+                + "~ but is not defined; the engine will not load this policy (" + msg.strip().split("\n")[0] + ")");
+        }
+        return copy;
     }
 
     /** A channel filter stage (drops ignored classes / strips ignored attributes). */
