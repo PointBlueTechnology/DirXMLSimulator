@@ -9,11 +9,19 @@ rather than running on a silently-incomplete chain.
 > → `run`/`step`/`test` warn referenced-but-undefined GCVs (excluding engine
 > `dirxml.auto.*`); the chain builders now accumulate unresolved policy linkages
 > (`DriverExport`/`LdifDriverSource.unresolvedPolicies()`) → warned up front;
-> `gcv.<name>=<value>` in `case.properties` overlays GCVs (after the source + `gcv.xml`).
-> Validated: a `token-global-variable` GCV warns when undefined and resolves when set;
-> `~name~` is correctly *not* treated as a policy GCV reference. **Deferred:** the
-> case-local `policies/` splice (use a fuller driver-set source meanwhile). The plan
-> below is what was built.
+> `gcv.<name>=<value>` in `case.properties` overlays GCVs (highest precedence, then
+> `gcv.xml`, then the source — `GCDefinitions.merge` keeps the *first* definition, so
+> the scope is built in that order; fixed in 1.5.2, before which overrides of an
+> existing name were silently ignored).
+> Validated: a `token-global-variable` GCV warns when undefined and resolves when set.
+> **Corrected in 1.5.2:** `~name~` in policy text *is* a GCV reference — the engine
+> substitutes it (any text or attribute, XPath expressions included) via
+> `GCDefinitions.apply` when it loads the policy, and an undefined `~name~` makes the
+> driver fail to start ("Referenced value not found"). `PolicyStage` now does the same,
+> so a case whose GCVs are incomplete fails at build with the name, instead of running
+> with a literal `~name~`. `GcvReferences` still scans only the token forms; the tilde
+> form is enforced by the build. **Deferred:** the case-local `policies/` splice (use
+> a fuller driver-set source meanwhile). The plan below is what was built.
 
 ## What's already handled (investigation)
 
