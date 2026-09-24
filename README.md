@@ -20,6 +20,11 @@ policy, and re-run in a loop.
 > [docs/shim-dev-workflow.md](docs/shim-dev-workflow.md) for testing your shim
 > from its own IntelliJ project, with the simulator and test cases in separate
 > repos.
+>
+> **Building the driver set in git?** [DirXMLDev](https://github.com/PointBlueTechnology/DirXMLDev)
+> is the companion Point Blue toolchain: the driver set lives as files, policy
+> changes are proved with this simulator, and a Cursor / VS Code extension
+> draws the policy-flow fishbone.
 
 ![An agent running the copy-surname sample case: the harness drives the real IDM engine, queries the in-memory fake directory, and copies Surname into a new CopiedSurname attribute.](docs/sample-case.png)
 
