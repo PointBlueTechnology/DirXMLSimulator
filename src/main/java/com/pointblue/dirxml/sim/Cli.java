@@ -638,7 +638,7 @@ public final class Cli {
         }
         c.bindDn = p.getProperty("ldapBindDn");
         c.password = p.getProperty("ldapBindPassword");
-        c.trustAllCerts = Boolean.parseBoolean(p.getProperty("ldapTrustAll", "true"));
+        c.trustAllCerts = Boolean.parseBoolean(p.getProperty("ldapTrustAll", "false"));   // opt in; verified otherwise (1.7.0)
 
         int count = Integer.parseInt(p.getProperty("cacheCount", "100"));
         int token = Integer.parseInt(p.getProperty("cacheToken", "0"));
