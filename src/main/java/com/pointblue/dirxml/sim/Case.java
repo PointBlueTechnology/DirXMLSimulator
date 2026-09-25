@@ -293,7 +293,7 @@ public final class Case {
      *   ldapBindDn=cn=admin,o=system
      *   ldapBindPassword.named=ldap-bind   # or ldapBindPassword=<literal>
      *   ldapSearchBase=o=data
-     *   ldapTrustAll=true            # ldaps with an internal CA
+     *   ldapTrustAll=true            # opt in for a self-signed / internal-CA cert (verified otherwise)
      *   ldapAssocPrefix=...          # prefix on the DirXML-Associations filter
      *   ldapDnTree=ACME-TREE         # tree name for slash-form DN values
      *
@@ -403,10 +403,9 @@ public final class Case {
         lc.url = url.trim();
         lc.bindDn = p.getProperty("ldapBindDn");
         lc.bindPassword = resolveSecret(p, directory, "ldapBindPassword");
-        // Default to NOT validating TLS certs: the harness only ever points at test
-        // directories, which routinely use self-signed / internal-CA certs. Set
-        // ldapTrustAll=false to re-enable validation.
-        lc.trustAllCerts = Boolean.parseBoolean(p.getProperty("ldapTrustAll", "true"));
+        // TLS is verified against the JDK trust store. A test directory with a self-signed or
+        // internal-CA certificate opts out with ldapTrustAll=true (since 1.7.0; it was the default before).
+        lc.trustAllCerts = Boolean.parseBoolean(p.getProperty("ldapTrustAll", "false"));
         return lc;
     }
 

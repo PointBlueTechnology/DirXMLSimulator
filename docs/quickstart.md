@@ -139,9 +139,10 @@ the driver's GCVs and ECMAScript resources. With `project=` it also loads the
 **schema** and validates `input.xds`/`directory.xds` against it. With a live `ldap=`
 connection you get more for free: `schema=ldap` reads the eDirectory schema
 directly (no project needed), and the policies' queries can be answered from **live
-eDirectory** instead of `directory.xds`. (TLS cert validation is off by default —
-test directories use self-signed certs; set `ldapTrustAll=false` to require a valid
-cert.)
+eDirectory** instead of `directory.xds`. TLS is verified against the JDK's trust
+store; a test directory with a self-signed or internal-CA certificate needs
+`ldapTrustAll=true` in `case.properties` (the opt-in; before 1.7.0 it was the
+default).
 
 > **Producing the LDIF** — a plain `ldapsearch *` omits the DirXML policy/config
 > attributes, so request them explicitly:
