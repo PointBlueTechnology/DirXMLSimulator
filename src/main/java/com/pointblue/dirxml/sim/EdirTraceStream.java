@@ -14,11 +14,7 @@ import com.novell.ldap.events.edir.EdirEventSpecifier;
 import com.novell.ldap.events.edir.EventResponseData;
 import com.novell.ldap.events.edir.eventdata.DebugEventData;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import java.nio.charset.StandardCharsets;
-import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -42,14 +38,19 @@ import java.util.regex.Pattern;
  */
 public final class EdirTraceStream implements AutoCloseable {
 
-    /** Connection settings; trust-all by default, as a lab or a tunnel needs. */
+    /**
+     * Connection settings. TLS verifies the server against the JDK's trust store unless
+     * {@link #trustAllCerts} is set on purpose (a lab with a private CA, an SSH tunnel whose
+     * certificate names another host): trusting every certificate is opt-in, never the default.
+     */
     public static final class Config {
         public String host;
         public int port = 636;
         public boolean ssl = true;
         public String bindDn;
         public String password;
-        public boolean trustAllCerts = true;
+        /** Opt in to accepting any server certificate ({@link TrustAllSocketFactory}); off by default. */
+        public boolean trustAllCerts = false;
 
         /** From an LDAP URL ({@code ldaps://host:636}, {@code ldap://host}); the port defaults per scheme. */
         public static Config fromUrl(String url, String bindDn, String password) {
@@ -213,9 +214,10 @@ public final class EdirTraceStream implements AutoCloseable {
         try {
             LDAPConnection c;
             if (config.ssl) {
-                SSLContext ctx = SSLContext.getInstance("TLS");
-                ctx.init(null, config.trustAllCerts ? new TrustManager[] {TRUST_ALL} : null, new java.security.SecureRandom());
-                c = new LDAPConnection(new LDAPJSSESecureSocketFactory(ctx.getSocketFactory()));
+                // the JDK's trust store by default; the trust-all factory only when asked for
+                c = new LDAPConnection(config.trustAllCerts
+                    ? new LDAPJSSESecureSocketFactory((javax.net.ssl.SSLSocketFactory) TrustAllSocketFactory.getDefault())
+                    : new LDAPJSSESecureSocketFactory());
             } else {
                 c = new LDAPConnection();
             }
@@ -228,9 +230,4 @@ public final class EdirTraceStream implements AutoCloseable {
         }
     }
 
-    private static final X509TrustManager TRUST_ALL = new X509TrustManager() {
-        public void checkClientTrusted(X509Certificate[] chain, String authType) { }
-        public void checkServerTrusted(X509Certificate[] chain, String authType) { }
-        public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
-    };
 }
