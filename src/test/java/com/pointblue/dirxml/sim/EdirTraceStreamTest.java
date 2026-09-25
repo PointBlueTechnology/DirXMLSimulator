@@ -57,5 +57,7 @@ public class EdirTraceStreamTest {
         EdirTraceStream.Config p = EdirTraceStream.Config.fromUrl("ldap://10.0.0.5", "cn=a", null);
         assertEquals(389, p.port);
         assertEquals(false, p.ssl);
+        assertEquals("trusting every certificate is opt-in", false, c.trustAllCerts);
+        assertEquals(false, new EdirTraceStream.Config().trustAllCerts);
     }
 }

@@ -873,7 +873,7 @@ public final class Cli {
         String url = flagValue(args, "--ldap");
         String bindDn = flagValue(args, "--bind-dn");
         if (url == null || bindDn == null) {
-            System.err.println("usage: trace --ldap ldaps://host:636 --bind-dn DN [--driver NAME] [--engine] [--grep RE] [--seconds N] [--json] [--verify-tls]");
+            System.err.println("usage: trace --ldap ldaps://host:636 --bind-dn DN [--driver NAME] [--engine] [--grep RE] [--seconds N] [--json] [--trust-all]");
             System.err.println("       password: SIM_LDAP_PASSWORD in the environment, or -Dldap.password");
             return 2;
         }
@@ -893,7 +893,7 @@ public final class Cli {
         String secondsFlag = flagValue(args, "--seconds");
         long seconds = secondsFlag == null ? 0 : Long.parseLong(secondsFlag);
         EdirTraceStream.Config c = EdirTraceStream.Config.fromUrl(url, bindDn, password);
-        c.trustAllCerts = !hasFlag(args, "--verify-tls");
+        c.trustAllCerts = hasFlag(args, "--trust-all");   // opt in; TLS is verified against the JDK trust store otherwise
         java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("HH:mm:ss");
         java.util.concurrent.atomic.AtomicLong count = new java.util.concurrent.atomic.AtomicLong();
         // a continuation line (a stack trace, an XML document) belongs to the last driver line seen
@@ -950,7 +950,7 @@ public final class Cli {
         System.err.println("  record <caseDir>             write goldens");
         System.err.println("  extract <traceFile> <outDir> mine a DSTrace log into a case");
         System.err.println("  dxcache <caseDir>            read a driver's event cache (live) into the case");
-        System.err.println("  trace --ldap URL --bind-dn DN [--driver NAME] [--engine] [--grep RE] [--seconds N] [--json]   stream the engine's DirXML trace over LDAP (password: SIM_LDAP_PASSWORD)");
+        System.err.println("  trace --ldap URL --bind-dn DN [--driver NAME] [--engine] [--grep RE] [--seconds N] [--json] [--trust-all]   stream the engine's DirXML trace over LDAP (password: SIM_LDAP_PASSWORD)");
         System.err.println("  dbevents <caseDir>           list/pick logged events from the Event Logger DB");
         System.err.println("  harvest <configDir> <outDir> [--refresh]  mint a regression corpus from real events");
         System.err.println("  doctor                       setup self-check");
