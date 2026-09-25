@@ -36,14 +36,15 @@ import java.security.cert.X509Certificate;
  */
 public final class DxCacheReader {
 
-    /** Connection settings; password from the named-password channel. Trust-all by default. */
+    /** Connection settings; password from the named-password channel. TLS verified unless {@link #trustAllCerts} is set on purpose. */
     public static final class Config {
         public String host;
         public int port = 636;
         public boolean ssl = true;
         public String bindDn;
         public String password;
-        public boolean trustAllCerts = true;
+        /** Opt in to accepting any server certificate ({@code ldapTrustAll=true} in case.properties); off by default since 1.7.0. */
+        public boolean trustAllCerts = false;
     }
 
     private static final int MAX_CHUNK = 64512;   // dxcmd's chunk size
