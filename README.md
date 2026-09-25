@@ -180,7 +180,18 @@ bin/sim test-all <dir> [--junit f] [--json f]  # run every case under <dir>; CI 
 bin/sim compare <caseDir> --against <cfg>  # same input through two policy sets; per-stage divergence
 bin/sim coverage <dir>               # rules fired vs defined across a corpus; lists never-fired rules
 bin/sim record <caseDir>             # write expected-output.xds / expected-directory.xds
+bin/sim trace --ldap ldaps://host:636 --bind-dn DN [--driver NAME] [--engine] [--grep RE] [--seconds N] [--json]
+                                     # the engine's DirXML trace, streamed over LDAP (no SSH, no trace file)
 ```
+
+`trace` registers for eDirectory's DirXML debug events (the DSTrace channels
+`DirXML Drivers` and, with `--engine`, `DirXML`) and prints each line as it
+happens, prefixed with the driver and thread (`ST` subscriber, `PT` publisher);
+`--driver` keeps one driver's lines, continuation lines (stack traces, XML)
+included. The bind password comes from `SIM_LDAP_PASSWORD`, never from the
+command line; the bind identity needs eDirectory's Monitor Entry right. What
+flows is what the driver's trace level produces, plus the engine's log events,
+which arrive at level 0 too. Nothing is written to the server.
 
 `run`, `step`, `test`, and `compare` accept `--json` for structured output an
 agent or script can parse. A case can also carry an `expected.assertions` file

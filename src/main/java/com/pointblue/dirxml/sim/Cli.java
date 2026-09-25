@@ -39,6 +39,14 @@ public final class Cli {
                 System.exit(3);
             }
         }
+        if (args.length >= 1 && args[0].equals("trace")) {
+            try {
+                System.exit(doTrace(args));
+            } catch (Exception e) {
+                System.err.println("ERROR: " + e.getMessage());
+                System.exit(3);
+            }
+        }
         if (args.length >= 1 && args[0].equals("dxcache")) {
             if (args.length < 2) {
                 System.err.println("usage: dxcache <caseDir>   "
@@ -856,6 +864,81 @@ public final class Cli {
         }
     }
 
+    /**
+     * {@code trace --ldap URL --bind-dn DN [--driver NAME] [--engine] [--grep RE] [--seconds N] [--json]}:
+     * the engine's DirXML trace streamed over LDAP ({@link EdirTraceStream}); the bind password comes
+     * from {@code SIM_LDAP_PASSWORD} or {@code -Dldap.password}, never from the command line.
+     */
+    private static int doTrace(String[] args) throws Exception {
+        String url = flagValue(args, "--ldap");
+        String bindDn = flagValue(args, "--bind-dn");
+        if (url == null || bindDn == null) {
+            System.err.println("usage: trace --ldap ldaps://host:636 --bind-dn DN [--driver NAME] [--engine] [--grep RE] [--seconds N] [--json] [--verify-tls]");
+            System.err.println("       password: SIM_LDAP_PASSWORD in the environment, or -Dldap.password");
+            return 2;
+        }
+        String password = System.getenv("SIM_LDAP_PASSWORD");
+        if (password == null || password.isEmpty()) {
+            password = System.getProperty("ldap.password");
+        }
+        if (password == null || password.isEmpty()) {
+            System.err.println("trace: no password — set SIM_LDAP_PASSWORD (or -Dldap.password)");
+            return 2;
+        }
+        String driver = flagValue(args, "--driver");
+        boolean engine = hasFlag(args, "--engine");
+        boolean json = hasFlag(args, "--json");
+        String grepFlag = flagValue(args, "--grep");
+        java.util.regex.Pattern grep = grepFlag == null ? null : java.util.regex.Pattern.compile(grepFlag);
+        String secondsFlag = flagValue(args, "--seconds");
+        long seconds = secondsFlag == null ? 0 : Long.parseLong(secondsFlag);
+        EdirTraceStream.Config c = EdirTraceStream.Config.fromUrl(url, bindDn, password);
+        c.trustAllCerts = !hasFlag(args, "--verify-tls");
+        java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("HH:mm:ss");
+        java.util.concurrent.atomic.AtomicLong count = new java.util.concurrent.atomic.AtomicLong();
+        // a continuation line (a stack trace, an XML document) belongs to the last driver line seen
+        String[] lastDriver = {null};
+        try (EdirTraceStream stream = new EdirTraceStream(c)) {
+            stream.start(engine, line -> {
+                String owner = line.driver != null ? line.driver : lastDriver[0];
+                if (line.driver != null) {
+                    lastDriver[0] = line.driver;
+                }
+                if (driver != null && (owner == null || !owner.equalsIgnoreCase(driver))) {
+                    return;
+                }
+                if (grep != null && !grep.matcher(line.text).find()) {
+                    return;
+                }
+                count.incrementAndGet();
+                if (json) {
+                    System.out.println("{\"time\":" + Json.q(fmt.format(new java.util.Date(line.receivedAt)) + "." + String.format("%03d", line.millis))
+                        + ",\"driver\":" + (owner == null ? "null" : Json.q(owner))
+                        + ",\"channel\":" + (line.channel == null ? "null" : Json.q(line.channel))
+                        + ",\"engine\":" + (line.eventType == com.novell.ldap.events.edir.EdirEventConstant.EVT_DB_DIRXML)
+                        + ",\"text\":" + Json.q(line.text) + "}");
+                } else {
+                    System.out.println("[" + fmt.format(new java.util.Date(line.receivedAt)) + "." + String.format("%03d", line.millis) + "] "
+                        + (driver != null ? (line.driver == null ? line.text : (line.channel == null ? "" : line.channel + ": ") + line.text) : line.format()));
+                }
+                System.out.flush();
+            });
+            System.err.println("streaming DirXML trace from " + c.host + ":" + c.port
+                + (driver != null ? " for driver '" + driver + "'" : " (every driver)") + (engine ? " + engine" : "")
+                + (seconds > 0 ? " for " + seconds + "s" : " until Ctrl-C"));
+            if (seconds > 0) {
+                Thread.sleep(seconds * 1000L);
+            } else {
+                Thread.currentThread().join();
+            }
+            for (Throwable t : stream.errors()) {
+                System.err.println("stream error: " + t.getMessage());
+            }
+        }
+        System.err.println(count.get() + " line(s)");
+        return 0;
+    }
+
     private static void usage() {
         System.err.println("usage:");
         System.err.println("  run    <caseDir> [--trace] [--json]   run chain, print final output (+ trace)");
@@ -867,6 +950,7 @@ public final class Cli {
         System.err.println("  record <caseDir>             write goldens");
         System.err.println("  extract <traceFile> <outDir> mine a DSTrace log into a case");
         System.err.println("  dxcache <caseDir>            read a driver's event cache (live) into the case");
+        System.err.println("  trace --ldap URL --bind-dn DN [--driver NAME] [--engine] [--grep RE] [--seconds N] [--json]   stream the engine's DirXML trace over LDAP (password: SIM_LDAP_PASSWORD)");
         System.err.println("  dbevents <caseDir>           list/pick logged events from the Event Logger DB");
         System.err.println("  harvest <configDir> <outDir> [--refresh]  mint a regression corpus from real events");
         System.err.println("  doctor                       setup self-check");
