@@ -94,6 +94,16 @@ Use `bin/sim test sim-tests/add-user` to diff against `expected-output.xds`
 (non-zero exit on mismatch), and `bin/sim record sim-tests/add-user` to capture
 the current shim response as the golden after a deliberate change.
 
+### Debugging a case
+
+Run the simulator's main class from IntelliJ with the case as its argument, or start the CLI with
+`-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=127.0.0.1:5005` and attach with
+Remote JVM Debug. With `shimJar=` pointing at your build output, breakpoints in the shim and in the
+engine's policy classes both hit. The engine jars are stripped (no line tables), so inside the
+engine's own classes you get method-entry breakpoints and step-over, with variables by slot; your
+shim steps line by line as your build allows. The fake directory answers the queries, so what you
+step through is the policy chain, not a vault.
+
 ## Pointing the plugin at the simulator
 
 The Claude Code plugin running in the shim project needs to know the harness
