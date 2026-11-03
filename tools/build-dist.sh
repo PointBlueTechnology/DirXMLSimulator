@@ -33,7 +33,7 @@ if [ -f lib/postgresql.jar ]; then
 fi
 cp -R .claude "$DIST/"
 cp -R docs "$DIST/"
-cp AGENTS.md README.md "$DIST/"
+cp AGENTS.md README.md LICENSE "$DIST/"
 # only the committed sample cases (never local/client cases)
 for c in copy-surname multi-rule xslt-demo ecma-demo; do
     [ -d "cases/$c" ] && cp -R "cases/$c" "$DIST/cases/"
