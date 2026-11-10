@@ -72,4 +72,24 @@ public class QueryScopeTest {
         assertTrue(FakeDirectory.inScope("a.users.rfi", "users.rfi", "subordinates"));
         assertFalse(FakeDirectory.inScope("a.b.users.rfi", "users.rfi", "subordinates"));
     }
+
+    /** AD names a user CN=Smith\, John: the escaped comma is part of the RDN, not a separator. */
+    @Test
+    public void ldapDnWithAnEscapedCommaIsInScope() {
+        String user = "CN=Smith\\, John,OU=Users,DC=x,DC=com";
+        assertTrue(FakeDirectory.inScope(user, "OU=Users,DC=x,DC=com", "subtree"));
+        assertTrue(FakeDirectory.inScope(user, "ou=users,dc=x,dc=com", "subordinates"));
+        assertTrue(FakeDirectory.inScope(user, "DC=x,DC=com", null));
+        assertFalse(FakeDirectory.inScope(user, "DC=x,DC=com", "subordinates"));
+        assertFalse(FakeDirectory.inScope(user, "OU=Other,DC=x,DC=com", "subtree"));
+    }
+
+    @Test
+    public void otherDnFormsStillMatch() {
+        assertTrue(FakeDirectory.inScope("\\T\\O=acme\\CN=bob", "\\T\\O=acme", "subordinates"));
+        assertTrue(FakeDirectory.inScope("O=acme\\CN=bob", "O=acme", "subordinates"));
+        assertTrue(FakeDirectory.inScope("cn=john.smith,ou=users,o=acme", "ou=users,o=acme", "subordinates"));
+        assertTrue(FakeDirectory.inScope("bob.users.acme", "users.acme", "subordinates"));
+        assertFalse(FakeDirectory.inScope("uid=j,ou=people,dc=example,dc=com", "dc=example,dc=com", "subordinates"));
+    }
 }

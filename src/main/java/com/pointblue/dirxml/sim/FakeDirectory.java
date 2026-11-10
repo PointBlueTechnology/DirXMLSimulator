@@ -245,6 +245,23 @@ public final class FakeDirectory implements XdsQueryProcessor, XdsCommandProcess
     private static List<String> dnComponents(String dn) {
         String s = dn.trim();
         List<String> parts = new ArrayList<>();
+        // An LDAP DN may carry backslash escapes (CN=Smith\, John,OU=…), so it is
+        // recognised before the slash form: it starts with attr= and has a comma.
+        if (LDAP_START.matcher(s).lookingAt() && s.indexOf(',') >= 0) {
+            StringBuilder rdn = new StringBuilder();
+            for (int i = 0; i < s.length(); i++) {
+                char c = s.charAt(i);
+                if (c == '\\' && i + 1 < s.length()) {
+                    rdn.append(c).append(s.charAt(++i));
+                } else if (c == ',') {
+                    addRootFirst(parts, rdn);
+                } else {
+                    rdn.append(c);
+                }
+            }
+            addRootFirst(parts, rdn);
+            return parts;
+        }
         boolean slash = s.indexOf('\\') >= 0;
         if (slash) {
             for (String p : s.split("\\\\")) {
@@ -262,6 +279,17 @@ public final class FakeDirectory implements XdsQueryProcessor, XdsCommandProcess
             }
         }
         return parts;
+    }
+
+    private static final java.util.regex.Pattern LDAP_START =
+        java.util.regex.Pattern.compile("[A-Za-z][A-Za-z0-9-]*\\s*=");
+
+    private static void addRootFirst(List<String> parts, StringBuilder rdn) {
+        String p = rdn.toString().trim();
+        if (!p.isEmpty()) {
+            parts.add(0, p);
+        }
+        rdn.setLength(0);
     }
 
     /**
