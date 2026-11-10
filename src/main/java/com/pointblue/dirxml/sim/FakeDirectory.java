@@ -178,6 +178,7 @@ public final class FakeDirectory implements XdsQueryProcessor, XdsCommandProcess
         }
         String destDn = q.getAttribute("dest-dn");
         String srcDn = q.getAttribute("src-dn");
+        String scope = q.getAttribute("scope");
         String assoc = readAssociation(q);
         List<MatchAttr> criteria = readSearchAttrs(q);
 
@@ -189,10 +190,10 @@ public final class FakeDirectory implements XdsQueryProcessor, XdsCommandProcess
                 }
                 continue;
             }
-            if (!destDn.isEmpty() && !destDn.equals(e.dn)) {
+            if (!destDn.isEmpty() && !inScope(e.dn, destDn, scope)) {
                 continue;
             }
-            if (!srcDn.isEmpty() && !srcDn.equals(e.dn)) {
+            if (!srcDn.isEmpty() && !inScope(e.dn, srcDn, scope)) {
                 continue;
             }
             if (wantClass != null && !wantClass.isEmpty()
@@ -205,6 +206,62 @@ public final class FakeDirectory implements XdsQueryProcessor, XdsCommandProcess
             matches.add(e);
         }
         return matches;
+    }
+
+    /**
+     * Whether {@code dn} falls within a query's base DN at the given scope, as the
+     * XDS DTD defines it: {@code entry} is the base object only, {@code subordinates}
+     * its immediate children, and {@code subtree} (the default when the attribute is
+     * absent) the base and everything below it. DNs compare case-insensitively.
+     * Slash-format DNs ({@code \o\ou\cn}) put the root first; LDAP ({@code cn=x,o=y})
+     * and dot ({@code x.y}) put it last.
+     */
+    static boolean inScope(String dn, String base, String scope) {
+        if (dn == null) {
+            return false;
+        }
+        if ("entry".equalsIgnoreCase(scope)) {
+            return dn.equalsIgnoreCase(base);
+        }
+        boolean oneLevel = "subordinates".equalsIgnoreCase(scope);
+        List<String> d = dnComponents(dn);
+        List<String> b = dnComponents(base);
+        if (d.size() < b.size()) {
+            return false;
+        }
+        int depth = d.size() - b.size();
+        if (oneLevel && depth != 1) {
+            return false;
+        }
+        for (int i = 0; i < b.size(); i++) {
+            if (!d.get(i).equalsIgnoreCase(b.get(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** DN components ordered root first, with surrounding whitespace trimmed. */
+    private static List<String> dnComponents(String dn) {
+        String s = dn.trim();
+        List<String> parts = new ArrayList<>();
+        boolean slash = s.indexOf('\\') >= 0;
+        if (slash) {
+            for (String p : s.split("\\\\")) {
+                if (!p.trim().isEmpty()) {
+                    parts.add(p.trim());
+                }
+            }
+            return parts;
+        }
+        boolean ldap = s.indexOf(',') >= 0 || (s.indexOf('=') >= 0 && s.indexOf('.') < 0);
+        String delim = ldap ? "," : "\\.";
+        for (String p : s.split(delim)) {
+            if (!p.trim().isEmpty()) {
+                parts.add(0, p.trim());
+            }
+        }
+        return parts;
     }
 
     /**
