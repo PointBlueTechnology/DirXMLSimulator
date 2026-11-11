@@ -27,3 +27,4 @@ cases/ldap-live/
 cases/ldap-driver/
 cases/ad-cache/
 cases/db-events/
+.flattened-pom.xml

@@ -113,6 +113,19 @@ mvn test                        # run the suite
 ./tools/build-dist.sh           # build the release archive (target/dist/…zip)
 ```
 
+The build needs the engine jars in `lib/` (the `engine-jars` profile turns on when
+`lib/dirxml.jar` exists). The pom that `mvn install` writes to `~/.m2`, and that
+Maven Central carries, is flattened: it names no engine jar.
+
+### As a Maven dependency
+
+From 1.9.0 the simulator is on Maven Central as
+`com.pointbluetech.dirxml:dirxml-simulator` (earlier versions used the groupId
+`com.pointblue.dirxml` and are only on GitHub releases). The engine jars are not
+dependencies of it: supply them yourself, as DirXMLDev does. Releases are published
+with DirXMLDev's `bin/publish-central`, which refuses a bundle naming anything on
+the publish blocklist.
+
 ## Install it as a Claude Code skill
 
 This project ships a Claude Code **skill** (`.claude/skills/dirxml-policy-testing/`)

@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.pointblue.dirxml</groupId>
+    <groupId>com.pointbluetech.dirxml</groupId>
     <artifactId>dirxml-simulator</artifactId>
     <version>1.8.0</version>
     <packaging>jar</packaging>
@@ -13,6 +13,34 @@
     <description>Headless, agent-driven test harness for IDM (DirXML) channel policies.
         Drives the engine's own policy interpreter stage-by-stage against
         author-supplied inputs and an in-memory fake directory.</description>
+    <url>https://github.com/PointBlueTechnology/DirXMLSimulator</url>
+
+    <organization>
+        <name>Point Blue Technology</name>
+        <url>https://www.pointbluetech.com</url>
+    </organization>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Point Blue Technology</name>
+            <organization>Point Blue Technology</organization>
+            <organizationUrl>https://www.pointbluetech.com</organizationUrl>
+        </developer>
+    </developers>
+
+    <scm>
+        <url>https://github.com/PointBlueTechnology/DirXMLSimulator</url>
+        <connection>scm:git:https://github.com/PointBlueTechnology/DirXMLSimulator.git</connection>
+        <developerConnection>scm:git:git@github.com:PointBlueTechnology/DirXMLSimulator.git</developerConnection>
+    </scm>
 
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
@@ -20,80 +48,6 @@
     </properties>
 
     <dependencies>
-        <!-- NetIQ / OpenText IDM engine + support jars (proprietary; system scope, kept in lib/) -->
-        <dependency>
-            <groupId>com.netiq.idm</groupId>
-            <artifactId>dirxml</artifactId>
-            <version>4.10.1.0000</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/lib/dirxml.jar</systemPath>
-        </dependency>
-        <dependency>
-            <groupId>com.netiq.idm</groupId>
-            <artifactId>dirxml_misc</artifactId>
-            <version>4.10.1.0000</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/lib/dirxml_misc.jar</systemPath>
-        </dependency>
-        <dependency>
-            <groupId>com.netiq.idm</groupId>
-            <artifactId>nxsl</artifactId>
-            <version>1.0.0</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/lib/nxsl.jar</systemPath>
-        </dependency>
-        <dependency>
-            <groupId>com.netiq.idm</groupId>
-            <artifactId>xp</artifactId>
-            <version>1.0.0</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/lib/xp.jar</systemPath>
-        </dependency>
-        <dependency>
-            <groupId>com.netiq.idm</groupId>
-            <artifactId>CommonDriverShim</artifactId>
-            <version>1.0.0</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/lib/CommonDriverShim.jar</systemPath>
-        </dependency>
-        <dependency>
-            <groupId>com.netiq.idm</groupId>
-            <artifactId>jclient</artifactId>
-            <version>1.0.0</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/lib/jclient.jar</systemPath>
-        </dependency>
-        <dependency>
-            <groupId>com.netiq.idm</groupId>
-            <artifactId>dhutil</artifactId>
-            <version>1.0.0</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/lib/dhutil.jar</systemPath>
-        </dependency>
-        <dependency>
-            <groupId>com.netiq.idm</groupId>
-            <artifactId>XDS</artifactId>
-            <version>1.0.0</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/lib/XDS.jar</systemPath>
-        </dependency>
-        <dependency>
-            <!-- Repackaged Rhino (com.novell.soa.script.mozilla) for ECMAScript es: functions -->
-            <groupId>com.netiq.idm</groupId>
-            <artifactId>js</artifactId>
-            <version>1.0.0</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/lib/js.jar</systemPath>
-        </dependency>
-        <dependency>
-            <!-- Novell/OpenText JLDAP SDK (com.novell.ldap) — only for the DxCMD
-                 features (driver-cache read / engine submit via LDAP extended ops). -->
-            <groupId>com.novell.ldap</groupId>
-            <artifactId>jldap</artifactId>
-            <version>4.3</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/lib/ldap.jar</systemPath>
-        </dependency>
         <dependency>
             <!-- PostgreSQL JDBC (open-source, BSD) — only for the EventLogger DB
                  event source (bin/sim dbevents). A real Maven dependency: Maven
@@ -151,6 +105,33 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- The pom installed into ~/.m2 and published: flattened, with the profiles removed, so
+                 it names no engine jar and no systemPath. Dependencies are this pom's own section. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>1.9.0</version>
+                <configuration>
+                    <flattenMode>ossrh</flattenMode>
+                    <updatePomFile>true</updatePomFile>
+                    <pomElements>
+                        <dependencies>interpolate</dependencies>
+                        <profiles>remove</profiles>
+                    </pomElements>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals><goal>flatten</goal></goals>
+                    </execution>
+                    <execution>
+                        <id>flatten-clean</id>
+                        <phase>clean</phase>
+                        <goals><goal>clean</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
             <!-- Convenience runner for the spike / CLI during development -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
@@ -183,4 +164,151 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <!-- The engine jars: proprietary, copied into lib/ by whoever builds, never published.
+                 Active whenever lib/dirxml.jar exists, which every build needs. Kept in a profile so
+                 the pom that is installed and published (flattened, profiles removed) does not name
+                 them: system-scoped paths in a published pom break every build that resolves it. -->
+            <id>engine-jars</id>
+            <activation>
+                <file><exists>${basedir}/lib/dirxml.jar</exists></file>
+            </activation>
+            <dependencies>
+                <!-- NetIQ / OpenText IDM engine + support jars (proprietary; system scope, kept in lib/) -->
+                <dependency>
+                    <groupId>com.netiq.idm</groupId>
+                    <artifactId>dirxml</artifactId>
+                    <version>4.10.1.0000</version>
+                    <scope>system</scope>
+                    <systemPath>${project.basedir}/lib/dirxml.jar</systemPath>
+                </dependency>
+                <dependency>
+                    <groupId>com.netiq.idm</groupId>
+                    <artifactId>dirxml_misc</artifactId>
+                    <version>4.10.1.0000</version>
+                    <scope>system</scope>
+                    <systemPath>${project.basedir}/lib/dirxml_misc.jar</systemPath>
+                </dependency>
+                <dependency>
+                    <groupId>com.netiq.idm</groupId>
+                    <artifactId>nxsl</artifactId>
+                    <version>1.0.0</version>
+                    <scope>system</scope>
+                    <systemPath>${project.basedir}/lib/nxsl.jar</systemPath>
+                </dependency>
+                <dependency>
+                    <groupId>com.netiq.idm</groupId>
+                    <artifactId>xp</artifactId>
+                    <version>1.0.0</version>
+                    <scope>system</scope>
+                    <systemPath>${project.basedir}/lib/xp.jar</systemPath>
+                </dependency>
+                <dependency>
+                    <groupId>com.netiq.idm</groupId>
+                    <artifactId>CommonDriverShim</artifactId>
+                    <version>1.0.0</version>
+                    <scope>system</scope>
+                    <systemPath>${project.basedir}/lib/CommonDriverShim.jar</systemPath>
+                </dependency>
+                <dependency>
+                    <groupId>com.netiq.idm</groupId>
+                    <artifactId>jclient</artifactId>
+                    <version>1.0.0</version>
+                    <scope>system</scope>
+                    <systemPath>${project.basedir}/lib/jclient.jar</systemPath>
+                </dependency>
+                <dependency>
+                    <groupId>com.netiq.idm</groupId>
+                    <artifactId>dhutil</artifactId>
+                    <version>1.0.0</version>
+                    <scope>system</scope>
+                    <systemPath>${project.basedir}/lib/dhutil.jar</systemPath>
+                </dependency>
+                <dependency>
+                    <groupId>com.netiq.idm</groupId>
+                    <artifactId>XDS</artifactId>
+                    <version>1.0.0</version>
+                    <scope>system</scope>
+                    <systemPath>${project.basedir}/lib/XDS.jar</systemPath>
+                </dependency>
+                <dependency>
+                    <!-- Repackaged Rhino (com.novell.soa.script.mozilla) for ECMAScript es: functions -->
+                    <groupId>com.netiq.idm</groupId>
+                    <artifactId>js</artifactId>
+                    <version>1.0.0</version>
+                    <scope>system</scope>
+                    <systemPath>${project.basedir}/lib/js.jar</systemPath>
+                </dependency>
+                <dependency>
+                    <!-- Novell/OpenText JLDAP SDK (com.novell.ldap) — only for the DxCMD
+                         features (driver-cache read / engine submit via LDAP extended ops). -->
+                    <groupId>com.novell.ldap</groupId>
+                    <artifactId>jldap</artifactId>
+                    <version>4.3</version>
+                    <scope>system</scope>
+                    <systemPath>${project.basedir}/lib/ldap.jar</systemPath>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <!-- Maven Central: sources, javadoc, signatures, and the bundle Central takes. The bundle is
+                 built, not uploaded (skipUpload): DirXMLDev's bin/publish-central checks it for names
+                 that must not be published, then uploads it. Needs the engine jars in lib/, like any
+                 build, so it runs on a maintainer's machine, not in CI. -->
+            <id>central</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>3.3.1</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals><goal>jar-no-fork</goal></goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>3.12.0</version>
+                        <configuration>
+                            <doclint>none</doclint>
+                            <quiet>true</quiet>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals><goal>jar</goal></goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.8</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals><goal>sign</goal></goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.12.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <skipUpload>true</skipUpload>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
