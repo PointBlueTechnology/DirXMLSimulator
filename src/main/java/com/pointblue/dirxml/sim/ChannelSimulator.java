@@ -164,6 +164,15 @@ public final class ChannelSimulator {
         for (PolicyStage stage : effective) {
             String inXds = Xds.serialize(doc);
             int traceMark = ctx.trace().length();
+            if (ADD_ONLY_SET.matcher(stage.name()).lookingAt() && !needsAddPolicies(doc)) {
+                // The engine runs Matching, Create and Placement only for an unassociated add
+                // (or a modify/sync/generated-password with no association, which it turns into one).
+                snapshots.add(new StageSnapshot(stage.name(), inXds, inXds,
+                    "Skipped: matching/create/placement policies apply only to an add with no"
+                        + " association (or a modify, sync or generated-password the engine turns into one).\n",
+                    dir.drainQueries(), dir.drainCommands()));
+                continue;
+            }
             try {
                 doc = stage.apply(doc, dyn);
             } catch (Exception e) {
@@ -210,5 +219,42 @@ public final class ChannelSimulator {
 
     public Result run(String inputXds, boolean perRule) {
         return run(Xds.parse(inputXds), perRule);
+    }
+
+    private static final java.util.regex.Pattern ADD_ONLY_SET =
+        java.util.regex.Pattern.compile("(subscriber|publisher)-(matching|create|placement):");
+
+    /**
+     * Whether the engine would run the Matching/Create/Placement policy sets for
+     * this document, as its subscriber does (non-fanout drivers):
+     * <ul>
+     *   <li>an {@code <add>} with no association runs them; one that already has an
+     *       association is merged with the associated object instead;</li>
+     *   <li>a {@code <modify>}, {@code <sync>} or {@code <generated-password>} with no
+     *       association is turned into an add, so it runs them;</li>
+     *   <li>a {@code <delete>}, {@code <rename>} or {@code <move>} with no association
+     *       is thrown away (warning 8019), so it never does;</li>
+     *   <li>any associated operation skips them.</li>
+     * </ul>
+     */
+    static boolean needsAddPolicies(Document doc) {
+        org.w3c.dom.Element root = doc.getDocumentElement();
+        org.w3c.dom.Element input = Xds.firstByName(root, "input");
+        if (input == null) {
+            return true;  // not a normal input document: leave it to the policies
+        }
+        for (org.w3c.dom.Element op : Xds.childElements(input)) {
+            String n = op.getLocalName();
+            if ((n.equals("add") || n.equals("modify") || n.equals("sync")
+                    || n.equals("generated-password")) && !associated(op)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean associated(org.w3c.dom.Element op) {
+        List<org.w3c.dom.Element> assoc = Xds.childrenByName(op, "association");
+        return !assoc.isEmpty() && !Xds.text(assoc.get(0)).trim().isEmpty();
     }
 }
