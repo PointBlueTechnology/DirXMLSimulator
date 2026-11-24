@@ -147,4 +147,34 @@ public class FakeDirectoryStructuredValueTest {
         assertTrue(ChannelSimulator.needsAddPolicies(Xds.parse(unassoc)));
         assertFalse(ChannelSimulator.needsAddPolicies(Xds.parse(assoc)));
     }
+
+    private static Document op(String name, boolean associated) {
+        return Xds.parse("<nds dtdversion='4.0'><input><" + name + " class-name='User' src-dn='" + USER + "'>"
+            + (associated ? "<association>a1</association>" : "") + "</" + name + "></input></nds>");
+    }
+
+    /** An add that already has an association is merged by the engine, not matched or created. */
+    @Test
+    public void associatedAddSkipsMatchingAndCreate() {
+        assertTrue(ChannelSimulator.needsAddPolicies(op("add", false)));
+        assertFalse(ChannelSimulator.needsAddPolicies(op("add", true)));
+    }
+
+    /** With no association the engine throws a delete, rename or move away (warning 8019): no add policies. */
+    @Test
+    public void unassociatedDeleteRenameMoveSkipMatchingAndCreate() {
+        for (String name : new String[] {"delete", "rename", "move"}) {
+            assertFalse(name, ChannelSimulator.needsAddPolicies(op(name, false)));
+            assertFalse(name, ChannelSimulator.needsAddPolicies(op(name, true)));
+        }
+    }
+
+    /** With no association the engine turns a modify, sync or generated-password into an add. */
+    @Test
+    public void unassociatedOpsTheEngineTurnsIntoAddsRunMatchingAndCreate() {
+        for (String name : new String[] {"modify", "sync", "generated-password"}) {
+            assertTrue(name, ChannelSimulator.needsAddPolicies(op(name, false)));
+            assertFalse(name, ChannelSimulator.needsAddPolicies(op(name, true)));
+        }
+    }
 }

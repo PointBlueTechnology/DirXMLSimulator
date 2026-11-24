@@ -165,11 +165,11 @@ public final class ChannelSimulator {
             String inXds = Xds.serialize(doc);
             int traceMark = ctx.trace().length();
             if (ADD_ONLY_SET.matcher(stage.name()).lookingAt() && !needsAddPolicies(doc)) {
-                // The engine runs Matching, Create and Placement only for an add (or an
-                // operation on an object with no association, which it turns into one).
+                // The engine runs Matching, Create and Placement only for an unassociated add
+                // (or a modify/sync/generated-password with no association, which it turns into one).
                 snapshots.add(new StageSnapshot(stage.name(), inXds, inXds,
-                    "Skipped: matching/create/placement policies apply only to add operations"
-                        + " or unassociated objects.\n",
+                    "Skipped: matching/create/placement policies apply only to an add with no"
+                        + " association (or a modify, sync or generated-password the engine turns into one).\n",
                     dir.drainQueries(), dir.drainCommands()));
                 continue;
             }
@@ -226,8 +226,16 @@ public final class ChannelSimulator {
 
     /**
      * Whether the engine would run the Matching/Create/Placement policy sets for
-     * this document: it holds an {@code <add>}, or an operation whose object has
-     * no association yet. An associated modify/delete/rename/move skips them.
+     * this document, as its subscriber does (non-fanout drivers):
+     * <ul>
+     *   <li>an {@code <add>} with no association runs them; one that already has an
+     *       association is merged with the associated object instead;</li>
+     *   <li>a {@code <modify>}, {@code <sync>} or {@code <generated-password>} with no
+     *       association is turned into an add, so it runs them;</li>
+     *   <li>a {@code <delete>}, {@code <rename>} or {@code <move>} with no association
+     *       is thrown away (warning 8019), so it never does;</li>
+     *   <li>any associated operation skips them.</li>
+     * </ul>
      */
     static boolean needsAddPolicies(Document doc) {
         org.w3c.dom.Element root = doc.getDocumentElement();
@@ -237,17 +245,16 @@ public final class ChannelSimulator {
         }
         for (org.w3c.dom.Element op : Xds.childElements(input)) {
             String n = op.getLocalName();
-            if (n.equals("add")) {
+            if ((n.equals("add") || n.equals("modify") || n.equals("sync")
+                    || n.equals("generated-password")) && !associated(op)) {
                 return true;
-            }
-            if (n.equals("modify") || n.equals("delete") || n.equals("rename")
-                    || n.equals("move") || n.equals("sync")) {
-                List<org.w3c.dom.Element> assoc = Xds.childrenByName(op, "association");
-                if (assoc.isEmpty() || Xds.text(assoc.get(0)).trim().isEmpty()) {
-                    return true;
-                }
             }
         }
         return false;
+    }
+
+    private static boolean associated(org.w3c.dom.Element op) {
+        List<org.w3c.dom.Element> assoc = Xds.childrenByName(op, "association");
+        return !assoc.isEmpty() && !Xds.text(assoc.get(0)).trim().isEmpty();
     }
 }
