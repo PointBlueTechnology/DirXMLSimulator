@@ -74,6 +74,19 @@
   **input op carries the entitlement change** (trace-mined inputs do). If an
   entitlement token comes back empty, the input is missing the
   `DirXML-EntitlementRef` add/remove-value — not a harness limitation.
+  Entitlements the user **holds but that aren't changing** (`if-entitlement …
+  available`, `token-entitlement`) are read from the source object: seed them in
+  `directory.xds` as structured `DirXML-EntitlementRef` values (the fake directory
+  keeps their components intact). A **revoke** is a state change, not a bare
+  removal: `<remove-value>` of the state-1 value plus `<add-value>` of the same
+  value with `<component name="nameSpace">0</component>`. A `<remove-value>` alone
+  doesn't count as the entitlement changing.
+- **Driver DN in `case.properties` needs doubled backslashes** (`driverDN=\\T\\o\\Drv`):
+  `.properties` treats a single `\` as an escape, so the DN is silently mangled and
+  `if-entitlement` never matches the entitlement's volume DN.
+- **Matching / Create / Placement stages show "Skipped"** for an associated
+  modify, delete, rename or move. The engine runs those policy sets only for an
+  add or an object with no association yet, and so does the harness.
 - **A queried value is missing/wrong.** In `step`, read the stage's QUERIES: did
   the policy ask for that attribute, with what `<search-attr>`/scope? Then check
   `directory.xds` actually contains a matching `<instance>` with that attr.

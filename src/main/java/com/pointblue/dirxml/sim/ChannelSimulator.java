@@ -164,6 +164,15 @@ public final class ChannelSimulator {
         for (PolicyStage stage : effective) {
             String inXds = Xds.serialize(doc);
             int traceMark = ctx.trace().length();
+            if (ADD_ONLY_SET.matcher(stage.name()).lookingAt() && !needsAddPolicies(doc)) {
+                // The engine runs Matching, Create and Placement only for an add (or an
+                // operation on an object with no association, which it turns into one).
+                snapshots.add(new StageSnapshot(stage.name(), inXds, inXds,
+                    "Skipped: matching/create/placement policies apply only to add operations"
+                        + " or unassociated objects.\n",
+                    dir.drainQueries(), dir.drainCommands()));
+                continue;
+            }
             try {
                 doc = stage.apply(doc, dyn);
             } catch (Exception e) {
@@ -210,5 +219,35 @@ public final class ChannelSimulator {
 
     public Result run(String inputXds, boolean perRule) {
         return run(Xds.parse(inputXds), perRule);
+    }
+
+    private static final java.util.regex.Pattern ADD_ONLY_SET =
+        java.util.regex.Pattern.compile("(subscriber|publisher)-(matching|create|placement):");
+
+    /**
+     * Whether the engine would run the Matching/Create/Placement policy sets for
+     * this document: it holds an {@code <add>}, or an operation whose object has
+     * no association yet. An associated modify/delete/rename/move skips them.
+     */
+    static boolean needsAddPolicies(Document doc) {
+        org.w3c.dom.Element root = doc.getDocumentElement();
+        org.w3c.dom.Element input = Xds.firstByName(root, "input");
+        if (input == null) {
+            return true;  // not a normal input document: leave it to the policies
+        }
+        for (org.w3c.dom.Element op : Xds.childElements(input)) {
+            String n = op.getLocalName();
+            if (n.equals("add")) {
+                return true;
+            }
+            if (n.equals("modify") || n.equals("delete") || n.equals("rename")
+                    || n.equals("move") || n.equals("sync")) {
+                List<org.w3c.dom.Element> assoc = Xds.childrenByName(op, "association");
+                if (assoc.isEmpty() || Xds.text(assoc.get(0)).trim().isEmpty()) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

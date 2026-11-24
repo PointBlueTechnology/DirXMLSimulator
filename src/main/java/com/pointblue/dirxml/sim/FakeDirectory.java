@@ -30,12 +30,35 @@ import java.util.Map;
  */
 public final class FakeDirectory implements XdsQueryProcessor, XdsCommandProcessor {
 
+    /**
+     * One attribute value as it arrived in XDS. {@code text} is the value's text
+     * content (what {@link Entry#attrs} has always exposed). A <em>structured</em>
+     * value ({@code <value type="structured"><component …/>…</value>}, e.g.
+     * {@code DirXML-EntitlementRef}, {@code DirXML-Associations}, path/typed-name
+     * syntaxes) also keeps its original {@code <value>} markup in {@code xml}, so
+     * a query returns it intact instead of flattened to concatenated text.
+     */
+    static final class Val {
+        final String text;
+        final String xml;   // serialized <value> element; null for a plain value
+        final String key;   // identity for matching / remove-value
+
+        Val(String text, String xml, String key) {
+            this.text = text;
+            this.xml = xml;
+            this.key = key;
+        }
+    }
+
     /** A directory entry. */
     public static final class Entry {
         public String className;
         public String dn;
         public String association;
+        /** Attribute values as text (structured values: their concatenated component text). */
         public final Map<String, List<String>> attrs = new LinkedHashMap<>();
+        /** Parallel to {@link #attrs}: the full value, kept so structured values round-trip. */
+        private final Map<String, List<Val>> vals = new LinkedHashMap<>();
 
         Entry(String className, String dn, String association) {
             this.className = className;
@@ -43,12 +66,57 @@ public final class FakeDirectory implements XdsQueryProcessor, XdsCommandProcess
             this.association = association;
         }
 
-        void set(String name, List<String> values) {
-            attrs.put(name, new ArrayList<>(values));
+        void set(String name, List<Val> values) {
+            vals.put(name, new ArrayList<>(values));
+            attrs.put(name, texts(values));
         }
 
-        void add(String name, List<String> values) {
-            attrs.computeIfAbsent(name, k -> new ArrayList<>()).addAll(values);
+        void add(String name, List<Val> values) {
+            vals.computeIfAbsent(name, k -> new ArrayList<>()).addAll(values);
+            attrs.computeIfAbsent(name, k -> new ArrayList<>()).addAll(texts(values));
+        }
+
+        void remove(String name, List<Val> values) {
+            List<Val> have = vals.get(name);
+            if (have == null) {
+                return;
+            }
+            for (Val want : values) {
+                have.removeIf(h -> h.key.equalsIgnoreCase(want.key));
+            }
+            attrs.put(name, texts(have));
+        }
+
+        void removeAll(String name) {
+            vals.remove(name);
+            attrs.remove(name);
+        }
+
+        /**
+         * The full values of an attribute. Falls back to the text view when a caller
+         * replaced {@link #attrs} directly, so the two views never disagree on output.
+         */
+        List<Val> values(String name) {
+            List<String> text = attrs.get(name);
+            List<Val> full = vals.get(name);
+            if (full != null && text != null && texts(full).equals(text)) {
+                return full;
+            }
+            List<Val> out = new ArrayList<>();
+            if (text != null) {
+                for (String t : text) {
+                    out.add(new Val(t, null, t));
+                }
+            }
+            return out;
+        }
+
+        private static List<String> texts(List<Val> values) {
+            List<String> out = new ArrayList<>(values.size());
+            for (Val v : values) {
+                out.add(v.text);
+            }
+            return out;
         }
     }
 
@@ -92,7 +160,7 @@ public final class FakeDirectory implements XdsQueryProcessor, XdsCommandProcess
         for (Element attr : Xds.childElements(el)) {
             String an = attr.getLocalName();
             if (an.equals("attr") || an.equals("add-attr")) {
-                entry.set(attr.getAttribute("attr-name"), readValues(attr));
+                entry.set(attr.getAttribute("attr-name"), readVals(attr));
             }
         }
         entries.put(dn, entry);
@@ -386,16 +454,13 @@ public final class FakeDirectory implements XdsQueryProcessor, XdsCommandProcess
             for (Element change : Xds.childElements(ma)) {
                 switch (change.getLocalName()) {
                     case "remove-all-values":
-                        e.attrs.remove(name);
+                        e.removeAll(name);
                         break;
                     case "add-value":
-                        e.add(name, readValues(change));
+                        e.add(name, readVals(change));
                         break;
                     case "remove-value":
-                        List<String> vals = e.attrs.get(name);
-                        if (vals != null) {
-                            vals.removeAll(readValues(change));
-                        }
+                        e.remove(name, readVals(change));
                         break;
                     default:
                 }
@@ -494,13 +559,17 @@ public final class FakeDirectory implements XdsQueryProcessor, XdsCommandProcess
         if (e.association != null) {
             sb.append("<association>").append(esc(e.association)).append("</association>");
         }
-        for (Map.Entry<String, List<String>> a : e.attrs.entrySet()) {
-            if (!read.all && !read.names.contains(a.getKey())) {
+        for (String name : e.attrs.keySet()) {
+            if (!read.all && !read.names.contains(name)) {
                 continue;
             }
-            sb.append("<attr attr-name=\"").append(esc(a.getKey())).append("\">");
-            for (String v : a.getValue()) {
-                sb.append("<value>").append(esc(v)).append("</value>");
+            sb.append("<attr attr-name=\"").append(esc(name)).append("\">");
+            for (Val v : e.values(name)) {
+                if (v.xml != null) {
+                    sb.append(v.xml);
+                } else {
+                    sb.append("<value>").append(esc(v.text)).append("</value>");
+                }
             }
             sb.append("</attr>");
         }
@@ -511,6 +580,49 @@ public final class FakeDirectory implements XdsQueryProcessor, XdsCommandProcess
     private Document wrapOutput(String instances) {
         return Xds.parse("<nds dtdversion=\"4.0\"><output>" + instances
             + "<status level=\"success\"/></output></nds>");
+    }
+
+    /**
+     * Read each {@code <value>} with its full form. A value with element children
+     * (a structured value) keeps its serialized markup, and its identity is its
+     * components' names and trimmed text, so formatting whitespace between
+     * components doesn't stop a {@code remove-value} from matching.
+     */
+    private static List<Val> readVals(Element parent) {
+        List<Val> out = new ArrayList<>();
+        for (Element v : Xds.childrenByName(parent, "value")) {
+            String text = Xds.text(v);
+            List<Element> parts = Xds.childElements(v);
+            if (parts.isEmpty()) {
+                out.add(new Val(text, null, text));
+                continue;
+            }
+            StringBuilder key = new StringBuilder();
+            StringBuilder flat = new StringBuilder();
+            for (Element c : parts) {
+                String ct = deepText(c);
+                key.append(c.getAttribute("name")).append('=').append(ct).append('\u0000');
+                flat.append(ct);
+            }
+            out.add(new Val(flat.toString(), Xds.serializeElement(v), key.toString()));
+        }
+        return out;
+    }
+
+    /** All descendant text, each text node trimmed (whitespace-only nodes dropped). */
+    private static String deepText(org.w3c.dom.Node n) {
+        StringBuilder sb = new StringBuilder();
+        org.w3c.dom.NodeList kids = n.getChildNodes();
+        for (int i = 0; i < kids.getLength(); i++) {
+            org.w3c.dom.Node k = kids.item(i);
+            short t = k.getNodeType();
+            if (t == org.w3c.dom.Node.TEXT_NODE || t == org.w3c.dom.Node.CDATA_SECTION_NODE) {
+                sb.append(k.getNodeValue().trim());
+            } else if (t == org.w3c.dom.Node.ELEMENT_NODE) {
+                sb.append(deepText(k));
+            }
+        }
+        return sb.toString();
     }
 
     private List<String> readValues(Element parent) {
